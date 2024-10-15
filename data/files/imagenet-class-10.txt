@@ -1,0 +1,10 @@
+/datasets/imagenet/val/n04357314/ILSVRC2012_val_00006886.JPEG
+/datasets/imagenet/val/n02056570/ILSVRC2012_val_00046850.JPEG
+/datasets/imagenet/val/n01644900/ILSVRC2012_val_00039996.JPEG
+/datasets/imagenet/val/n09229709/ILSVRC2012_val_00049270.JPEG
+/datasets/imagenet/val/n02444819/ILSVRC2012_val_00027060.JPEG
+/datasets/imagenet/val/n02268853/ILSVRC2012_val_00049961.JPEG
+/datasets/imagenet/val/n02129604/ILSVRC2012_val_00031492.JPEG
+/datasets/imagenet/val/n02093754/ILSVRC2012_val_00044399.JPEG
+/datasets/imagenet/val/n07880968/ILSVRC2012_val_00010112.JPEG
+/datasets/imagenet/val/n02012849/ILSVRC2012_val_00014376.JPEG

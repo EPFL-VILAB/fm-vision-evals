@@ -162,3 +162,5 @@ cython_debug/
 #.idea/
 
 playground/
+test.ipynb
+.env
