@@ -57,25 +57,17 @@ class Logger:
 
     # --custom logging methods----------------------------------------------------------------
 
-    def log_output(self, resp_dict: Optional[Dict], tokens: Tuple[int, int], batch: bool = False):
+    def log_output(self, resp_dict: Optional[Union[Dict, List]], tokens: Tuple[int, int]):
         """ Logs a single output of the API call"""
         self.compl_tokens += tokens[0]
         self.prompt_tokens += tokens[1]
         if resp_dict:
             with open(self.temp_output_file, 'a') as f:
-                if batch:
-                    for resp_dict in resp_dict:
-                        f.write(json.dumps(resp_dict) + '\n')
+                if isinstance(resp_dict, list):
+                    for rd in resp_dict:
+                        f.write(json.dumps(rd) + '\n')
                 else:
                     f.write(json.dumps(resp_dict) + '\n')
-
-    # def log_outputs(self, resp_dicts: List[Dict], tokens: Tuple[int, int]):
-    #     """ Logs multiple outputs of the API call"""
-    #     self.compl_tokens += tokens[0]
-    #     self.prompt_tokens += tokens[1]
-    #     with open(self.temp_output_file, 'a') as f:
-    #         for resp_dict in resp_dicts:
-    #             f.write(json.dumps(resp_dict) + '\n')
 
     def log_backup(self, resp_dict: Union[Dict, List[Dict]]):
         """ Logs a backup of the output(s)"""

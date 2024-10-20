@@ -6,9 +6,10 @@ import google.generativeai as genai
 # --System Prompt----------------------------------------------------------------
 
 
-def system_prompts_cls(prompt_no: int, imagenet_classes: list, batch_size: int, n_classes: int = 1000, dataset: str = 'imagenet') -> str:
+def system_prompts_cls(prompt_no: int, imagenet_classes: list, batch_size: int) -> str:
     assert prompt_no in [1, 2, 3, 4, 5], "Invalid prompt number."
 
+    n_classes = len(imagenet_classes)
     if prompt_no == 1:
         system_prompt = f"""You will be provided with a set of {n_classes} classes in a list. The user will provide you with {batch_size} images, """ +\
                         """and your job is to correctly identify the label corresponding to the images. Only output the label """ +\
@@ -101,10 +102,10 @@ def json_schema_cls(bs: int, model: str):
 
 # --Full Prompt----------------------------------------------------------------
 
-def full_prompt_cls(prompt_no: int, imagenet_classes: list, batch_size: int, model: str, n_classes: int = 1000, dataset: str = 'imagenet'):
+def full_prompt_cls(prompt_no: int, imagenet_classes: list, batch_size: int, model: str):
     messages = []
 
-    system_prompt = system_prompts_cls(prompt_no, imagenet_classes, batch_size, n_classes, dataset)
+    system_prompt = system_prompts_cls(prompt_no, imagenet_classes, batch_size)
     messages.append({"role": "system", "content": system_prompt})
     for i in range(batch_size):
         user_prompt = f"Please identify the class of the image provided. The class has to belong to one of the classes specified in the system prompt. Output the answer in a JSON, with key '{i+1}'."

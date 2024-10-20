@@ -8,7 +8,8 @@ import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 from openai import OpenAI
 
-from utils.data import decode_image
+from taskit.utils.data import decode_image
+from taskit.utils.data_constants import O4_DEFAULTS, GEMINI_DEFAULTS, CLAUDE_DEFAULTS
 
 
 # ==Class Definitions==================================================================
@@ -91,6 +92,7 @@ class MFMWrapper(metaclass=TaskRegistryABCMeta):
             eval_func = self.EVAL_REGISTRY[eval]
         else:
             raise ValueError(f"Evaluation {eval} not supported, please choose from {self.EVAL_REGISTRY.keys()}")
+        kwargs.pop('task', None)
         return eval_func(output_file, **kwargs)
 
     def send_message(self, message: Dict):
@@ -106,14 +108,7 @@ class GPT4o(MFMWrapper):
         self.client = OpenAI(api_key=api_key)
         self.name = 'gpt-4o-2024-08-06'
         self.seed = 42
-        self.default_prompt_no = {
-            'classify': 5,
-            'detect': 6,
-            'segment': 2,
-            'group': 2,
-            'depth': 4,
-            'normals': 4
-        }
+        self.default_settings = O4_DEFAULTS
 
     def send_message(self, message: Dict):
         messages, json_schema = message['messages'], message['json_schema']
@@ -137,8 +132,9 @@ class GPT4o(MFMWrapper):
                     return None, (0, 0), True
 
     def predict(self, task, file_name: str, **kwargs):
-        # if both prompt and prompt_no are not provided, use the default prompt_no
-        kwargs['prompt_no'] = kwargs.get('prompt_no', self.default_prompt_no[task])
+        default_settings = self.default_settings[task]
+        for k, v in default_settings.items():
+            kwargs[k] = kwargs.get(k, v)
         return super().predict(task, file_name, **kwargs)
 
 
@@ -151,14 +147,7 @@ class GeminiPro(MFMWrapper):
         genai.configure(api_key=api_key)
         self.client = genai
         self.name = 'gemini-1.5-pro'
-        self.default_prompt_no = {
-            'classify': 1,
-            'detect': 6,
-            'segment': 1,
-            'group': 2,
-            'depth': 5,
-            'normals': 1
-        }
+        self.default_settings = GEMINI_DEFAULTS
 
     def parse_message(self, all_messages: Dict):
         system_prompt = all_messages['messages'][0]['content']
@@ -211,7 +200,9 @@ class GeminiPro(MFMWrapper):
                     return None, (0, 0), True
 
     def predict(self, task, file_name: str, **kwargs):
-        kwargs['prompt_no'] = kwargs.get('prompt_no', self.default_prompt_no[task])
+        default_settings = self.default_settings[task]
+        for k, v in default_settings.items():
+            kwargs[k] = kwargs.get(k, v)
         return super().predict(task, file_name, **kwargs)
 
 
@@ -223,14 +214,7 @@ class ClaudeSonnet(MFMWrapper):
     def __init__(self, api_key):
         self.client = anthropic.Anthropic(api_key=api_key)
         self.name = 'claude-3-5-sonnet-20240620'
-        self.default_prompt_no = {
-            'classify': 5,
-            'detect': 3,
-            'segment': 2,
-            'group': 2,
-            'depth': 2,
-            'normals': 3
-        }
+        self.default_settings = CLAUDE_DEFAULTS
 
     def parse_message(self, all_messages: Dict):
         system_prompt = all_messages['messages'][0]['content']
@@ -285,7 +269,9 @@ class ClaudeSonnet(MFMWrapper):
         return resp_dict, (compl_tokens, prompt_tokens), error_status
 
     def predict(self, task, file_name: str, **kwargs):
-        kwargs['prompt_no'] = kwargs.get('prompt_no', self.default_prompt_no[task])
+        default_settings = self.default_settings[task]
+        for k, v in default_settings.items():
+            kwargs[k] = kwargs.get(k, v)
         return super().predict(task, file_name, **kwargs)
 
 

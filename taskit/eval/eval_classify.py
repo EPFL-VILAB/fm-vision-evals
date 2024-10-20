@@ -3,6 +3,7 @@ from tqdm import tqdm
 from typing import Dict, List, Optional, Union
 
 from taskit.mfm import MFMWrapper
+from taskit.utils.data_constants import IMAGENET_LABELS
 
 
 @MFMWrapper.register_eval('eval_classify')
@@ -12,6 +13,7 @@ def eval_classify(
     read_from_file: bool = False,
     data_file_names: Optional[str] = None,
     dataset: str = 'imagenet',
+    labels: list = IMAGENET_LABELS
 ) -> Dict[str, float]:
     """ Returns top-1 accuracy after reading outputs from 'output_file'
 
@@ -28,11 +30,10 @@ def eval_classify(
 
     valid_datasets = ['imagenet-r', 'imagenet-robustbench-3dcc', 'imagenet-robustbench-2dcc', 'imagenet-sketch', 'imagenet-v2', 'imagenet']
 
-    if dataset in valid_datasets or dataset == 'imagenet':
-        groundtruth = json.load(open(f'./data/metadata/{dataset}.json'))
+    if dataset in valid_datasets:
+        groundtruth = json.load(open(f'./scripts/data/metadata/{dataset}.json'))  # dict mapping file_name to label
     else:
         raise ValueError(f"Dataset {dataset} not supported by eval_classify")
-    imagenet_labels = json.load(open('./data/metadata/imagenet-actual-labels.json'))  # list of 1000 imagenet labels
 
     if isinstance(output_file, list):
         outputs = {'data': output_file}
@@ -54,7 +55,7 @@ def eval_classify(
     for dic in tqdm(outputs['data']):
         if dic['file_name'] not in data_files:
             continue
-        if dic['class'].strip() == imagenet_labels[groundtruth[dic['file_name']]]:
+        if dic['class'].strip() == labels[groundtruth[dic['file_name']]]:
             acc += 1
 
     acc /= len(data_files)
