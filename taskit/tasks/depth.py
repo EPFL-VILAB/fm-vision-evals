@@ -328,7 +328,7 @@ def depth(
     file_name: Union[List[str], str],
     prompt: Optional[Dict] = None,
     prompt_no: int = -1,
-    n_points: int = 200,
+    n_samples: int = 200,
     n_segments: int = 100,
     shape: str = "point",
     shuffle: bool = True,
@@ -339,11 +339,11 @@ def depth(
 
     Args:
         model: The MFM model to use.
-        file_name: The path(s) to the image file to classify.
+        file_name: The path(s) to the image file to estimate the depth.
         prompt: The prompt to use for depth prediction.
         prompt_no: The prompt number to use (if prompt is None).
-        n_points: The total number of samples in the depth map.
-        n_segments: The number of segments to divide the image into.
+        n_samples: The total number of samples in the depth map.
+        n_segments: The number of segments to split the image into (using SLIC). The actual number of segments will be close but may be different.
         shape: The shape of the visual marker.
         shuffle: Whether to shuffle the order of the segments.
         n_threads: The number of threads to use for parallel processing.
@@ -370,7 +370,7 @@ def depth(
 
     for img_idx, img in enumerate(imgs):
         segments = slic(img_as_float(img), n_segments=n_segments, sigma=5)
-        segment_pairs = sample_segments(segments, min_samples=n_points, shuffle=shuffle)
+        segment_pairs = sample_segments(segments, min_samples=n_samples, shuffle=shuffle)
 
         def process_segment_pair(index, seg_pair):
             img_boundaries = deepcopy(img)
@@ -390,7 +390,7 @@ def depth(
                     resp_dict["depth_order"] = [resp_dict["near"], "red" if resp_dict["near"] == "blue" else "blue"]
                     resp_dict.pop("near")
             if error_status:
-                return None, tokens, error_status
+                return index, None, tokens, error_status
 
             return index, resp_dict, tokens, error_status
 

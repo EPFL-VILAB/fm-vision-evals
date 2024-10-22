@@ -45,13 +45,44 @@ def replace_images_in_prompt(full_prompt_output: dict, images: list):
     for message in messages:
         if message["role"] == "user":
             # Loop through content to find where <img> is located
-            for content in message["content"]:
-                if "image_url" in content and content["image_url"]["url"] == "<img>":
-                    # Replace <img> with the corresponding encoded image
-                    content["image_url"]["url"] = f"data:image/png;base64,{encode_image(images[img_index])}"
-                    img_index += 1
+            if isinstance(message["content"], list):
+                for content in message["content"]:
+                    if "image_url" in content and content["image_url"]["url"] == "<img>":
+                        # Replace <img> with the corresponding encoded image
+                        content["image_url"]["url"] = f"data:image/png;base64,{encode_image(images[img_index])}"
+                        img_index += 1
+            else:
+                if isinstance(message["content"], dict):
+                    content = message["content"]
+                    if "image_url" in content and content["image_url"]["url"] == "<img>":
+                        # Replace <img> with the corresponding encoded image
+                        content["image_url"]["url"] = f"data:image/png;base64,{encode_image(images[img_index])}"
+                        img_index += 1
 
     return full_prompt_output
+
+
+def find_adjacent_segments(segments):
+    n_segments = len(np.unique(segments))
+    adjacency_matrix = np.zeros((n_segments, n_segments), dtype=bool)
+
+    # Get the shape of the image
+    height, width = segments.shape
+
+    # Check each pixel and its 4-connected neighbors (up, down, left, right)
+    for y in range(height):
+        for x in range(width):
+            segment_id = segments[y, x] - 1
+            # Check right neighbor
+            if x < width - 1 and segments[y, x + 1] - 1 != segment_id:
+                adjacency_matrix[segment_id, segments[y, x + 1] - 1] = True
+                adjacency_matrix[segments[y, x + 1] - 1, segment_id] = True
+            # Check down neighbor
+            if y < height - 1 and segments[y + 1, x] - 1 != segment_id:
+                adjacency_matrix[segment_id, segments[y + 1, x] - 1] = True
+                adjacency_matrix[segments[y + 1, x] - 1, segment_id] = True
+
+    return adjacency_matrix
 
 
 # ==Visual Prompts==================================================================

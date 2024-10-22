@@ -222,7 +222,7 @@ def eval_segment(
     """Returns pixel accuracy and mIoU after reading outputs from 'output_file'
 
     Args:
-        (If visualise is False)
+
         output_file: Union[List, str], output file containing the model predictions
         invalid_files: list, list of invalid files
         read_from_file: bool, whether to read data_file_names from file
@@ -234,6 +234,10 @@ def eval_segment(
         visualise: bool, whether to output segmentation visualisations instead of metrics
         n_threads: int, number of threads to use for processing images
         ignore_index: int, index to ignore in evaluation
+
+    Returns:
+        (If visualise is False)
+        eval_metrics: dict containing pixel accuracy and mIoU
 
         OR
 
@@ -260,7 +264,7 @@ def eval_segment(
 
     if not visualise:
         gt_arrays = []
-        groundtruth = json.load(open('./scripts/data/metadata/coco-segment.json'))  # dict mapping file_name to gt segmentation file_path
+        groundtruth = json.load(open('./taskit/utils/metadata/coco-segment.json'))  # dict mapping file_name to gt segmentation file_path
         for file_name in rgb_data_files:
             gt_arrays.append(np.array(Image.open(groundtruth[file_name])))
 

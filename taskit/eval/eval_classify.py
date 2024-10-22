@@ -31,7 +31,7 @@ def eval_classify(
     valid_datasets = ['imagenet-r', 'imagenet-robustbench-3dcc', 'imagenet-robustbench-2dcc', 'imagenet-sketch', 'imagenet-v2', 'imagenet']
 
     if dataset in valid_datasets:
-        groundtruth = json.load(open(f'./scripts/data/metadata/{dataset}.json'))  # dict mapping file_name to label
+        groundtruth = json.load(open(f'./taskit/utils/metadata/{dataset}.json'))  # dict mapping file_name to label
     else:
         raise ValueError(f"Dataset {dataset} not supported by eval_classify")
 

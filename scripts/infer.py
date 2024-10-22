@@ -1,3 +1,4 @@
+import json
 import os
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")
@@ -9,8 +10,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from tqdm import tqdm
 from taskit.mfm import get_mfm_wrapper
-from taskit.eval import eval_classify, eval_depth, eval_segment
-from taskit.tasks import classify, depth, segment
+from taskit.eval import eval_classify, eval_segment, eval_grouping, eval_depth
+from taskit.tasks import classify, segment, grouping, depth
 from scripts.utils.log import Logger
 
 file_lock = threading.Lock()
@@ -27,6 +28,7 @@ def get_args():
     parser.add_argument('--api_key', type=str, required=True, help='API key for the MFM API')
 
     parser.add_argument('-t', '--task', default='', type=str,
+                        choices=['classify', 'segment', 'group', 'depth', 'normals'],
                         help='Task to evaluate MFM on')
     parser.add_argument('-e', '--eval_type', default='', type=str,
                         help='Type of eval to run')
@@ -54,8 +56,6 @@ def get_args():
                         help='If evaluation is to be skipped.')
     parser.add_argument('--continue', action='store_true',
                         help='If the evaluation is to be continued from the last checkpoint.')
-    parser.add_argument('--visualize', action='store_true',
-                        help='If the evaluation is to be continued from the last checkpoint.')
 
     args = parser.parse_args()
 
@@ -71,6 +71,11 @@ def get_args():
         return args, config['task_specific_args'], config['eval_specific_args']
     else:
         return args, {}, {}
+
+def find_points_for_grouping(f):
+    groundtruth = json.load(open('./taskit/utils/metadata/coco-group.json'))[f]
+    points = [v['point'] for k, v in groundtruth.items() if k != 'file_name']
+    return points
 
 
 def main(args, task_specific_args, eval_specific_args):
@@ -90,6 +95,9 @@ def main(args, task_specific_args, eval_specific_args):
         log.info("Beginning inference")
 
         def process_iter(index, f):
+            if args.task == 'group':
+                point_list = find_points_for_grouping(f)
+                task_specific_args['point_list'] = point_list
             resp_dict, tokens, error_status = model.predict(args.task, f, return_dict=True, **task_specific_args)
             if error_status:
                 log.log_invalid_file(f)

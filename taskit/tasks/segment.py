@@ -12,6 +12,7 @@ from taskit.mfm import MFMWrapper
 from taskit.utils.data import replace_images_in_prompt, draw_around_superpixel
 from taskit.utils.data_constants import COCO_SEMSEG_LABELS, COCO_COLOR_MAP
 
+
 # --System Prompt----------------------------------------------------------------
 
 
@@ -261,7 +262,7 @@ def segment(
         file_name: The path(s) to the image file to segment.
         prompt: The prompt to use for segmentation.
         prompt_no: The prompt number to use (if prompt is None).
-        n_segments: The number of segments to generate.
+        n_segments: The number of segments to split the image into (using SLIC). The actual number of segments will be close but may be different.
         batch_size: The number of segments to classify in each batch.
         shape: The shape of the visual marker.
         labels: The list of labels to use for segmentation.
@@ -320,6 +321,7 @@ def segment(
                 all_results[str(start_idx + k)] = resp_dict.get(str(k + 1), "unknown")
 
             classes_guessed += [v for k, v in resp_dict.items() if k != "reasoning_steps"]
+            classes_guessed = list(set(classes_guessed))
             compl_tokens += tokens[0]
             prompt_tokens += tokens[1]
 

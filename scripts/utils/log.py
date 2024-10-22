@@ -33,9 +33,6 @@ class Logger:
         self.backup_file = os.path.join(backup_path, f"backup_{output_file_name}_{timestamp}.json")
         self.error_file = os.path.join(error_path, f"error_{output_file_name}_{timestamp}.json")
 
-        # make a directory for log files
-        os.makedirs(os.path.join(path, "logfiles"), exist_ok=True)
-
         self.delete_temp = delete_temp
         self.info_dict = info_dict
         self.compl_tokens, self.prompt_tokens = 0, 0

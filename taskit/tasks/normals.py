@@ -1,4 +1,17 @@
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from copy import deepcopy
+from typing import Dict, List, Optional, Union
+
 import google.generativeai as genai
+import numpy as np
+from PIL import Image
+from skimage.util import img_as_float
+from skimage.segmentation import slic
+from tqdm import tqdm
+
+from taskit.eval import eval_normals
+from taskit.mfm import MFMWrapper
+from taskit.utils.data import replace_images_in_prompt, sample_segments, draw_around_superpixel
 
 
 # --System Prompt----------------------------------------------------------------
@@ -127,3 +140,240 @@ def system_prompts_normals(prompt_no: int, shape: str) -> str:
 
 
 # --JSON Schema----------------------------------------------------------------
+
+
+def json_schema_normals(prompt_no: int, model: str):
+    if model == 'gpt-4o-2024-08-06':
+        if prompt_no in [1, 2]:
+            json_schema, json_properties = {}, {}
+            json_properties["right"] = {"type": "string", "enum": ["red", "blue", "equal"], "description": "The color of the region that faces right (from the point of view of the viewer). If both are regions equally face right, output 'equal'. If a region faces left, output the color of the other region."}
+            json_properties["up"] = {"type": "string", "enum": ["red", "blue", "equal"], "description": "The color of the region that faces up. If both are regions equally face up, output 'equal'. If a region faces down, output the color of the other region."}
+            json_properties["out"] = {"type": "string", "enum": ["red", "blue", "equal"], "description": "The color of the region that faces out of the image. If both are regions equally face out of the image, output 'equal'. Note that a region facing inwards won't be visible to the camera. Therefore, output the color of the region that faces outwards, or output 'equal' if no region faces outwards."}
+            json_schema["name"] = "reasoning_schema"
+            json_schema["strict"] = True
+            json_schema["schema"] = {"type": "object", "properties": json_properties, "required": ["right", "up", "out"], "additionalProperties": False}
+
+        elif prompt_no in [3, 4, 5]:
+            json_schema, json_properties = {}, {}
+            json_properties["reasoning_steps"] = {"type": "array", "items": {"type": "string"}, "description": "The reasoning steps leading to the final conclusion."}
+            json_properties["right"] = {"type": "string", "enum": ["red", "blue", "equal"], "description": "The color of the region that faces right (from the point of view of the viewer). If both regions equally face right, output 'equal'. If a region faces left, output the color of the other region."}
+            json_properties["up"] = {"type": "string", "enum": ["red", "blue", "equal"], "description": "The color of the region that faces up. If both regions equally face up, output 'equal'. If a region faces down, output the color of the other region."}
+            json_properties["out"] = {"type": "string", "enum": ["red", "blue", "equal"], "description": "The color of the region that faces out of the image. If both regions equally face out of the image, output 'equal'. Note that a region facing inwards won't be visible to the camera. Therefore, output the color of the region that faces outwards, or output 'equal' if no region faces outwards."}
+            json_schema["name"] = "reasoning_schema"
+            json_schema["strict"] = True
+            json_schema["schema"] = {"type": "object", "properties": json_properties, "required": ["reasoning_steps", "right", "up", "out"], "additionalProperties": False}
+
+    elif model == 'gemini-1.5-pro':
+        if prompt_no in [1, 2]:
+            json_schema = genai.protos.Schema(
+                type=genai.protos.Type.OBJECT,
+                properties={
+                    "right": genai.protos.Schema(
+                        type=genai.protos.Type.STRING,
+                        enum=["red", "blue", "equal"],
+                        description="The color of the region that faces right (from the point of view of the viewer). If both regions equally face right, output 'equal'. If a region faces left, output the color of the other region."
+                    ),
+                    "up": genai.protos.Schema(
+                        type=genai.protos.Type.STRING,
+                        enum=["red", "blue", "equal"],
+                        description="The color of the region that faces up. If both regions equally face up, output 'equal'. If a region faces down, output the color of the other region."
+                    ),
+                    "out": genai.protos.Schema(
+                        type=genai.protos.Type.STRING,
+                        enum=["red", "blue", "equal"],
+                        description="The color of the region that faces out of the image. If both regions equally face out of the image, output 'equal'. Note that a region facing inwards won't be visible to the camera. Therefore, output the color of the region that faces outwards, or output 'equal' if no region faces outwards."
+                    )
+                },
+                required=["right", "up", "out"],
+            )
+
+        elif prompt_no in [3, 4, 5]:
+            json_schema = genai.protos.Schema(
+                type=genai.protos.Type.OBJECT,
+                properties={
+                    "reasoning_steps": genai.protos.Schema(
+                        type=genai.protos.Type.ARRAY,
+                        items=genai.protos.Schema(type=genai.protos.Type.STRING),
+                        description="The reasoning steps leading to the final conclusion. Use your understanding of 3D scene geometry to reason."
+                    ),
+                    "right": genai.protos.Schema(
+                        type=genai.protos.Type.STRING,
+                        enum=["red", "blue", "equal"],
+                        description="The color of the region that faces right (from the point of view of the viewer). If both regions equally face right, output 'equal'. If a region faces left, output the color of the other region."
+                    ),
+                    "up": genai.protos.Schema(
+                        type=genai.protos.Type.STRING,
+                        enum=["red", "blue", "equal"],
+                        description="The color of the region that faces up. If both regions equally face up, output 'equal'. If a region faces down, output the color of the other region."
+                    ),
+                    "out": genai.protos.Schema(
+                        type=genai.protos.Type.STRING,
+                        enum=["red", "blue", "equal"],
+                        description="The color of the region that faces out of the image. If both regions equally face out of the image, output 'equal'. Note that a region facing inwards won't be visible to the camera. Therefore, output the color of the region that faces outwards, or output 'equal' if no region faces outwards."
+                    )
+                },
+                required=["reasoning_steps", "right", "up", "out"],
+            )
+
+    elif model == 'claude-3-5-sonnet-20240620':
+        if prompt_no in [1, 2]:
+            json_schema = "Please provide your response in the following JSON format:\n\n" +\
+                "{\n" +\
+                '    "right": "color",\n' +\
+                '    "up": "color",\n' +\
+                '    "out": "color"\n' +\
+                "}\n\n" +\
+                "Where:\n\n" +\
+                "right: This field should contain a string representing the color of the region that faces right (from the " +\
+                "point of view of the viewer). If both regions equally face right, output 'equal'. If a region faces left, " +\
+                "output the color of the other region. The output must be one of: 'red', 'blue', or 'equal'.\n\n" +\
+                "up: This field should contain a string representing the color of the region that faces up. If both regions " +\
+                "equally face up, output 'equal'. If a region faces down, output the color of the other region. The output " +\
+                "must be one of: 'red', 'blue', or 'equal'.\n\n" +\
+                "out: This field should contain a string representing the color of the region that faces out of the image. " +\
+                "If both regions equally face out of the image, output 'equal'. Note that a region facing inwards won't be " +\
+                "visible to the camera. Therefore, output the color of the region that faces outwards, or output 'equal' if " +\
+                "no region faces outwards. The output must be one of: 'red', 'blue', or 'equal'.\n\n" +\
+                "Please ensure your response adheres strictly to this JSON format, including only the specified fields " +\
+                "without any additional properties. To summarise, the keys in the JSON object should be 'right', 'up', and 'out'."
+            expected_keys = ["right", "up", "out"]
+
+        elif prompt_no in [3, 4, 5]:
+            json_schema = "Please provide your response in the following JSON format:\n\n" +\
+                "{\n" +\
+                '    "reasoning_steps": ["The reasoning steps leading to the final conclusion."],\n' +\
+                '    "right": "color",\n' +\
+                '    "up": "color",\n' +\
+                '    "out": "color"\n' +\
+                "}\n\n" +\
+                "Where:\n\n" +\
+                "reasoning_steps: This field should contain an array of strings representing the reasoning steps leading to " +\
+                "the final conclusion. Use your understanding of 3D scene geometry to reason.\n\n" +\
+                "right: This field should contain a string representing the color of the region that faces right (from the " +\
+                "point of view of the viewer). If both regions equally face right, output 'equal'. If a region faces left, " +\
+                "output the color of the other region. The output must be one of: 'red', 'blue', or 'equal'.\n\n" +\
+                "up: This field should contain a string representing the color of the region that faces up. If both regions " +\
+                "equally face up, output 'equal'. If a region faces down, output the color of the other region. The output " +\
+                "must be one of: 'red', 'blue', or 'equal'.\n\n" +\
+                "out: This field should contain a string representing the color of the region that faces out of the image. " +\
+                "If both regions equally face out of the image, output 'equal'. Note that a region facing inwards won't be " +\
+                "visible to the camera. Therefore, output the color of the region that faces outwards, or output 'equal' if " +\
+                "no region faces outwards. The output must be one of: 'red', 'blue', or 'equal'.\n\n" +\
+                "Please ensure your response adheres strictly to this JSON format, including only the specified fields " +\
+                "without any additional properties. To summarise, the keys in the JSON object should be 'reasoning_steps', " +\
+                "'right', 'up', and 'out'."
+            expected_keys = ["reasoning_steps", "right", "up", "out"]
+
+        json_schema = (json_schema, expected_keys)
+
+    return json_schema
+
+
+# --Full Text Prompt----------------------------------------------------------------
+
+
+def full_prompt_normals(prompt_no: int, model: str, shape: str):
+    messages = []
+
+    system_prompt = system_prompts_normals(prompt_no, shape)
+    messages.append({"role": "system", "content": system_prompt})
+
+    user_prompt_1 = f"""Here is the full image with the two {shape}s. """
+    messages.append({"role": "user", "content": [{"type": "text", "text": user_prompt_1}, {"type": "image_url", "image_url": {"url": "<img>", "detail": "high"}}]})
+
+    json_schema = json_schema_normals(prompt_no, model)
+
+    return {"messages": messages, "json_schema": json_schema}
+
+
+# --Full Prompt----------------------------------------------------------------
+
+
+@MFMWrapper.register_task('normals')
+def normals(
+    model: MFMWrapper,
+    file_name: Union[List[str], str],
+    prompt: Optional[Dict] = None,
+    prompt_no: int = -1,
+    n_samples: int = 200,
+    n_segments: int = 200,
+    shape: str = "rectangle",
+    n_threads: int = 20,
+    return_dict: bool = False
+):
+    """Finds the surface normals of an image using the MFM.
+
+    Args:
+        model: The MFM model to use.
+        file_name: The path(s) to the image file to estimate normals.
+        prompt: The prompt to use for normal estimation
+        prompt_no: The prompt number to use (if prompt is None).
+        n_samples: The number of samples to generate.
+        n_segments: The number of segments to split the image into (using SLIC). The actual number of segments will be close but may be different.
+        shape: The shape of the visual marker to use for demarcating the regions.
+        n_threads: The number of threads to use for parallel processing.
+        return_dict: Whether to return the result as a list of dictionaries.
+
+    Returns:
+        (if return_dict is True)
+        resp_list: List of dicts, each containing the "right", "up", and "out" values.
+        tokens: A tuple containing the completion tokens and the prompt tokens
+        error_status: A boolean indicating whether an error occurred
+
+        OR
+
+        (if return_dict is False)
+        resp_list: List of the predicted classes
+        tokens: A tuple containing the completion tokens and the prompt tokens
+    """
+
+    file_name = file_name if isinstance(file_name, list) else [file_name]
+    imgs = [Image.open(fn.strip()).convert('RGB') for fn in file_name]
+
+    compl_tokens, prompt_tokens = 0, 0
+    resp_dict_list, error_status = [], False
+
+    for img_idx, img in enumerate(imgs):
+        segments = slic(img_as_float(img), n_segments=n_segments, sigma=5)
+        segment_pairs = sample_segments(segments, min_samples=n_samples)
+
+        def process_segment_pair(index, seg_pair):
+            img_boundaries = deepcopy(img)
+            for color, seg in zip(["red", "blue"], seg_pair):
+                seg_mask = np.zeros_like(segments)
+                seg_mask[segments == seg] = 1
+                img_boundaries = draw_around_superpixel(img_boundaries, segments, seg, shape, color)
+
+            full_prompt = full_prompt_normals(prompt_no, model.name, shape) if not prompt else prompt
+            full_prompt = replace_images_in_prompt(full_prompt, [img_boundaries])
+
+            resp_dict, tokens, error_status = model.send_message(full_prompt)
+
+            if not error_status:
+                resp_dict.pop("reasoning_steps", None)
+            else:
+                return None, tokens, error_status
+
+            return index, resp_dict, tokens, error_status
+
+        with ThreadPoolExecutor(max_workers=n_threads) as executor:
+            futures = [executor.submit(process_segment_pair, i, seg_pair) for i, seg_pair in enumerate(segment_pairs)]
+            results = [None] * len(futures)
+            display_pbar = True if return_dict else False
+
+            for future in tqdm(as_completed(futures), total=len(futures), disable=not display_pbar):
+                idx, result, (res_compl_tokens, res_prompt_tokens), err = future.result()
+                results[idx] = result
+                compl_tokens += res_compl_tokens
+                prompt_tokens += res_prompt_tokens
+                if err:
+                    error_status = True
+
+        seg_pairs = [[int(seg) for seg in seg_pair] for seg_pair in segment_pairs]
+        resp_dict_list.append({"normal_orders": results, "segment_pairs": seg_pairs, "file_name": file_name[img_idx].strip()})
+
+    if return_dict:
+        return resp_dict_list, (compl_tokens, prompt_tokens), error_status
+    else:
+        normal_maps = model.eval(resp_dict_list, eval='eval_normals', n_segments=n_segments, visualise=True)
+        return normal_maps, (compl_tokens, prompt_tokens)

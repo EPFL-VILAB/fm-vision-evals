@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Any, Dict, List, Optional, Union
+from typing import List, Optional, Union
 
 import cvxpy as cp
 import matplotlib.pyplot as plt
@@ -12,6 +12,7 @@ from skimage.segmentation import slic
 from tqdm import tqdm
 
 from taskit.mfm import MFMWrapper
+from taskit.utils.data import find_adjacent_segments
 
 
 def delta_error(pred_depths, gt_depths):
@@ -79,29 +80,6 @@ def compute_correl_metrics(optimal_x, average_depth, seg_map, gt_depth, file_nam
     return -local_correl_tau, -local_correl_rho, -global_correl_tau, -global_correl_rho
 
 
-def find_adjacent_segments(segments):
-    n_segments = len(np.unique(segments))
-    adjacency_matrix = np.zeros((n_segments, n_segments), dtype=bool)
-
-    # Get the shape of the image
-    height, width = segments.shape
-
-    # Check each pixel and its 4-connected neighbors (up, down, left, right)
-    for y in range(height):
-        for x in range(width):
-            segment_id = segments[y, x] - 1
-            # Check right neighbor
-            if x < width - 1 and segments[y, x + 1] - 1 != segment_id:
-                adjacency_matrix[segment_id, segments[y, x + 1] - 1] = True
-                adjacency_matrix[segments[y, x + 1] - 1, segment_id] = True
-            # Check down neighbor
-            if y < height - 1 and segments[y + 1, x] - 1 != segment_id:
-                adjacency_matrix[segment_id, segments[y + 1, x] - 1] = True
-                adjacency_matrix[segments[y + 1, x] - 1, segment_id] = True
-
-    return adjacency_matrix
-
-
 def find_relative_depths(depth_orders_preds, seg_pairs, segment_map):
     depth_orders, logprobs = [], []
 
@@ -141,7 +119,6 @@ def find_relative_depths(depth_orders_preds, seg_pairs, segment_map):
         if len(logprobs) > 0:
             W_logprob_lt[idx, idx] = max(2 * np.exp(logprobs[idx]) - 1, 1e-8)
 
-    # Find all adjacency pairs
     adj_pairs = np.argwhere(adjacency_matrix)
     adj_pairs = adj_pairs[adj_pairs[:, 0] < adj_pairs[:, 1]]  # To ensure each pair is only counted once
 
@@ -157,13 +134,13 @@ def find_relative_depths(depth_orders_preds, seg_pairs, segment_map):
     constraints = [x[n_points:] == 1]
 
     eps_noise = np.eye(n_points + n_edges) * 1e-8
-    # logprobs = []
+
     if len(logprobs) == 0:
         objective = cp.Minimize(cp.quad_form(x, A_gt.T @ A_gt + eps_noise) + cp.quad_form(x, A_lt.T @ A_lt + eps_noise) + 20 * cp.quad_form(x[:n_points], A_adj.T @ A_adj + eps_noise[:n_points, :n_points]))  # objective function
     else:
         objective = cp.Minimize(cp.quad_form(x, A_gt.T @ W_logprob_gt @ A_gt + eps_noise) + cp.quad_form(x, A_lt.T @ W_logprob_lt @ A_lt + eps_noise) + 20 * cp.quad_form(x[:n_points], A_adj.T @ A_adj + eps_noise[:n_points, :n_points]))
 
-    prob = cp.Problem(objective, constraints)  # Define and solve the problem
+    prob = cp.Problem(objective, constraints)  
     result = prob.solve()  # noqa
     optimal_x = x.value[:n_points]
 
@@ -192,10 +169,12 @@ def eval_depth(
         Returns:
             (If visualise is False)
             avg_accuracy: percentage of correctly predicted pairwise rankings
-            avg_local_kendall_tau: float, average local Kendall's tau
+            avg_local_kendall_tau: float, average local Kendall's tau (local: ranking correlation of the superpixels wrt ground-truth superpixels)
             avg_local_spearman_rank: float, average local Spearman's rank correlation (ranking of superpixels)
-            avg_global_kendall_tau: float, average global Kendall's tau
+            avg_global_kendall_tau: float, average global Kendall's tau (global: ranking correlation of all the pixels wrt ground-truth pixels)
             avg_global_spearman_rank: float, average global Spearman's rank correlation (ranking of pixels)
+            delta_errors: The images are scaled and shifted based on the ground truth. The delta errors (<1.25, <1.25^2, <1.25^3) are computed for the scaled predictions
+            abs_rel_errors: The absolute relative errors for the scaled predictions
 
             OR
 
@@ -218,7 +197,7 @@ def eval_depth(
 
     if not visualise:
         euclidean_depth_arrays = []
-        groundtruth = json.load(open('./scripts/data/metadata/hypersim.json'))  # dict mapping file_name to gt file_path
+        groundtruth = json.load(open('./taskit/utils/metadata/hypersim-depth.json'))  # dict mapping file_name to gt file_path
         for rgb_file in rgb_data_files:
             euclidean_file = groundtruth[rgb_file]
             euclidean_depth_arrays.append(np.array(Image.open(euclidean_file)))

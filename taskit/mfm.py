@@ -132,9 +132,10 @@ class GPT4o(MFMWrapper):
                     return None, (0, 0), True
 
     def predict(self, task, file_name: str, **kwargs):
-        default_settings = self.default_settings[task]
-        for k, v in default_settings.items():
-            kwargs[k] = kwargs.get(k, v)
+        if task in self.default_settings:
+            default_settings = self.default_settings[task]
+            for k, v in default_settings.items():
+                kwargs[k] = kwargs.get(k, v)
         return super().predict(task, file_name, **kwargs)
 
 
@@ -200,9 +201,10 @@ class GeminiPro(MFMWrapper):
                     return None, (0, 0), True
 
     def predict(self, task, file_name: str, **kwargs):
-        default_settings = self.default_settings[task]
-        for k, v in default_settings.items():
-            kwargs[k] = kwargs.get(k, v)
+        if task in self.default_settings:
+            default_settings = self.default_settings[task]
+            for k, v in default_settings.items():
+                kwargs[k] = kwargs.get(k, v)
         return super().predict(task, file_name, **kwargs)
 
 
@@ -269,9 +271,10 @@ class ClaudeSonnet(MFMWrapper):
         return resp_dict, (compl_tokens, prompt_tokens), error_status
 
     def predict(self, task, file_name: str, **kwargs):
-        default_settings = self.default_settings[task]
-        for k, v in default_settings.items():
-            kwargs[k] = kwargs.get(k, v)
+        if task in self.default_settings:
+            default_settings = self.default_settings[task]
+            for k, v in default_settings.items():
+                kwargs[k] = kwargs.get(k, v)
         return super().predict(task, file_name, **kwargs)
 
 

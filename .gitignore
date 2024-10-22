@@ -165,3 +165,6 @@ playground/
 test.ipynb
 commands.txt
 .env
+run_eval.sh
+scripts/data/logs
+taskit/utils/metadata/coco-group.json

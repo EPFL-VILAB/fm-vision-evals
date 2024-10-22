@@ -1,15 +1,230 @@
 from typing import Dict, List, Optional, Union
 
 from PIL import Image
+import google.generativeai as genai
 
 from taskit.mfm import MFMWrapper
-from taskit.prompts import full_prompt_cls
 from taskit.utils.data import replace_images_in_prompt, crop_img
-from taskit.utils.data_constants import IMAGENET_LABELS
+from taskit.utils.data_constants import IMAGENET_LABELS, COCO_DETECT_LABELS
+
+
+# --System Prompt----------------------------------------------------------------
+
+
+def system_prompts_cls(prompt_no: int, class_list: list, batch_size: int) -> str:
+    assert prompt_no in [1, 2, 3, 4, 5], "Invalid prompt number."
+
+    n_classes = len(class_list)
+    if prompt_no == 1:
+        system_prompt = f"""You will be provided with a set of {n_classes} classes in a list. The user will provide you with {batch_size} images, """ +\
+                        """and your job is to correctly identify the label corresponding to the images. Only output the label """ +\
+                        f"""corresponding to the image, and nothing else. Output the class name in a JSON, with key "<image number>". For example, {{"1": "image 1 class", "2": "image 2 class", ... , "{batch_size}": "image {batch_size} class"}}. Classes: {class_list}"""
+
+    elif prompt_no == 2:
+        system_prompt = f"""You are an AI assistant tasked with classifying images. You will be provided with {batch_size} images and must assign each image to one of the {n_classes} classes. Follow these instructions carefully:\n""" +\
+                        f"""1. Here is the list of {n_classes} classes you will use for classification:\n<image_classes>\n{class_list}\n</image_classes>\n\n 2. Present your classifications in JSON format, with keys representing the image number (starting from 1 and ending at {batch_size}) and values representing the class assigned to the image. For example: {{"1": "image 1 class", "2": "image 2 class", "3": "image 3 class", ... , "{batch_size}": "image {batch_size} class"}}\n\n""" +\
+                        f"""3. If you are unsure about a classification:\na. Choose the most likely class based on the available information.\nb. Do not express uncertainty in your output or suggest alternative classes.\n\n4.After classifying all images, present your final output in a single JSON object. Ensure that you have an entry for each image, numbered from 1 to {batch_size}."""
+
+    elif prompt_no == 3:
+        system_prompt = """You are an advanced AI image classification system with expertise in recognizing a wide variety of objects, animals, and scenes. Your task is to classify a batch of images into predefined categories with high accuracy.\n\n""" +\
+                        """First, familiarize yourself with the list of image classes you will be using for classification:\n\n""" +\
+                        f"""<image_classes>\n{class_list}\n</image_classes>\n\n""" +\
+                        f"""You will be presented with {batch_size} images to classify. Each image must be assigned to one of the classes listed above. Follow these instructions carefully:\n\n""" +\
+                        """1. Analyze each image thoroughly, considering all visible elements, objects, and context clues.\n\n""" +\
+                        """2. Select the most appropriate class for each image based on your analysis. If an image contains multiple objects or elements, choose the class that best represents the main subject or most prominent feature of the image.\n\n""" +\
+                        f"""3. Present your classifications in a JSON format. The keys should represent the image number (starting from 1 and ending at {batch_size}), and the values should represent the assigned class. For example:\n\n""" +\
+                        f"""{{"1": "{class_list[0]}", "2": "{class_list[2]}", "3": "{class_list[1]}", ... , "{batch_size}": "{class_list[9]}"}}\n\n""" +\
+                        """If you are unsure about a classification:\n""" +\
+                        """a. Choose the most likely class based on the available information and your expert knowledge.\n""" +\
+                        """b. Do not express uncertainty in your output or suggest alternative classes.\n""" +\
+                        """c. Avoid using generic terms or classes not present in the provided list.\n\n""" +\
+                        f"""5. After classifying all images, present your final output as a single JSON object. Ensure that you have an entry for each image, numbered from 1 to {batch_size}.\n\n""" +\
+                        """6. Do not include any explanations, comments, or additional text outside of the JSON object in your final output.\n\n""" +\
+                        """Remember, you are an expert image classification system. Approach each image with confidence and precision, drawing upon your vast knowledge of visual features and characteristics associated with each class. Your goal is to provide accurate and consistent classifications across the entire batch of images."""
+    elif prompt_no == 4:
+        system_prompt = f"""You are a highly accurate image classification AI. You will be provided with a comprehensive set of {n_classes} classes. The user will present you with {batch_size} images for classification. Your task is to analyze each image carefully and determine the most appropriate label from the given classes.\n\n""" +\
+                        """For each image:\n""" +\
+                        """1. Examine the image thoroughly, considering all visible elements, objects, and context.\n""" +\
+                        """2. Compare the image content against the provided class list.\n""" +\
+                        """3. Select the single most accurate class that best represents the primary subject or focus of the image.\n""" +\
+                        """Output your classifications in a JSON format, where the key is the image number and the value is the exact class name from the provided list. Do not add any explanations or additional text.\n\n""" +\
+                        f"""Example output format: {{"1": "class_name_1", "2": "class_name_2", ..., "{batch_size}": "class_name_{batch_size}"}}\n\n""" +\
+                        f"""Strive for maximum accuracy in your classifications. If you're unsure about a particular image, choose the class that most closely matches the image content. The classes to choose from are: {class_list}."""
+    elif prompt_no == 5:
+        system_prompt = f"""You are a highly advanced image classification system. You have been trained on a vast array of visual data and can accurately identify objects, scenes, and concepts across a wide range of categories. You will be presented with {batch_size} images for classification. Your task is to analyze each image carefully, considering multiple aspects such as shape, color, texture, context, and any distinguishing features. Draw upon your extensive knowledge to determine the most accurate label for each image from the provided set of {n_classes} classes.\n\n""" +\
+                        """Output your classifications in JSON format, with each image number as the key and the corresponding class name as the value. Be as precise and specific as possible in your classifications. If you're unsure, choose the most likely class based on the visual information available. Here's the expected output format:\n\n""" +\
+                        f"""{{"1": "class_name_1", "2": "class_name_2", ..., "{batch_size}": "class_name_{batch_size}"}}\n\n""" +\
+                        f"""Remember, only output the JSON object with your classifications. Do not include any explanations or additional text. Classes: {class_list}."""
+
+    return system_prompt
+
+
+def system_prompt_cls_crop(class_list: list):
+    system_prompt = """You are a highly advanced AI classifier responsible for accurately identifying and classifying elements within an image. You will be provided with a cropped section of an image and the full image from which this crop was taken. Your task is to analyze the cropped image meticulously, considering every detail and potential context.\n\n""" +\
+                    """**Step-by-Step Instructions:**\n\n""" +\
+                    """1. Detailed Reasoning:\n""" +\
+                    """• Reason About the Crop: Begin by thoroughly reasoning through the cropped image, focusing on every visible detail. Consider aspects such as the objects, textures, shapes, colors, and any relevant features. Pay special attention to any subtle elements that might influence the classification.\n""" +\
+                    """• Contextualize: Compare the crop with the full image to understand the broader context. Identify how the crop fits within the larger scene, which may reveal important clues about the classes present in the crop.\n""" +\
+                    """2. Class Identification:\n""" +\
+                    """• Identify All Relevant Classes: Based on your detailed reasoning, determine all the classes present in the cropped image. Consider both the objects and the background, as the background itself may represent a specific class.\n""" +\
+                    """• Check for Overlapping Classes: If there are multiple possible classes that could describe an object or background, consider the likelihood of each. In cases of ambiguity, include all plausible classes to maximize recall.\n""" +\
+                    """• Accuracy Assurance: Double-check your selections by re-examining the crop and its context within the full image. Ensure that every class you identify is justifiable based on the visual evidence.\n""" +\
+                    """3. Output Format:\n""" +\
+                    """• JSON Structure: Provide your findings in the following JSON format:\n""" +\
+                    """{\n""" + \
+                    """  "reasoning_steps": [\n""" + \
+                    """    "Step 1: Examined the crop to identify all visible elements and features.",\n""" + \
+                    """    "Step 2: Compared the crop with the full image to understand the context.",\n""" + \
+                    """    ...\n""" + \
+                    """  ],\n""" + \
+                    """  "classes": ["class_1", "class_2", ...]\n""" + \
+                    """}\n\n""" + \
+                    """• Explanation: In the “reasoning_steps” field, include your detailed analysis, explaining your reasoning and how the context of the full image informed your classification decisions.\n\n""" +\
+                    """**Additional Guidelines:**\n\n""" +\
+                    """• Comprehensive Consideration: Include all classes that could reasonably be present, even if they seem secondary. It's better to be thorough and inclusive.\n""" +\
+                    f"""• Class List: The classes you must select from are: {class_list}. Ensure every class you identify is part of this predefined list.\n""" +\
+                    """• Final Verification: After determining the classes, review your work (in the reasoning steps) to ensure that no plausible class is overlooked and that each identified class is supported by clear visual evidence.\n\n""" +\
+                    """Your goal is to achieve the highest possible accuracy and recall by carefully considering every detail and context.”"""
+
+    return system_prompt
+
+
+# --JSON Schema----------------------------------------------------------------
+
+
+def json_schema_cls(bs: int, model: str):
+    if model == 'gpt-4o-2024-08-06':
+        json_schema, json_properties = {}, {}
+        json_properties.update({str(k+1): {"type": "string", "description": f"class for image {k}."} for k in range(bs)})
+        json_schema["name"] = "schema"
+        json_schema["strict"] = True
+        json_schema["schema"] = {"type": "object", "properties": json_properties, "required": [str(k+1) for k in range(bs)], "additionalProperties": False}
+
+    elif model == 'gemini-1.5-pro':
+        json_schema = genai.protos.Schema(
+            type=genai.protos.Type.OBJECT,
+            properties={
+                str(k+1): genai.protos.Schema(
+                    type=genai.protos.Type.STRING,
+                    description=f"class for image {k}."
+                ) for k in range(bs)},
+            required=[str(k+1) for k in range(bs)],
+        )
+
+    elif model == 'claude-3-5-sonnet-20240620':
+        json_schema = """Please provide your response in the following JSON format:\n\n""" +\
+                      """{\n""" +\
+                      """    "1": "class for image 1",\n""" +\
+                      """    "2": "class for image 2",\n""" +\
+                      """    "3": "class for image 3",\n""" +\
+                      """    ...\n""" +\
+                      """    "[bs]": "class for image [bs]"\n""" +\
+                      """}\n\n""" +\
+                      """Where:\n\n""" +\
+                      """Each numbered key (1, 2, 3, ..., [bs]) represents an image number.\n""" +\
+                      """The corresponding value for each key should be a string describing the class for that image.\n\n""" +\
+                      """[bs] represents the batch size, which is the total number of images.\n\n""" +\
+                      """Please ensure your response adheres strictly to this JSON format, including only the specified fields """ +\
+                      """without any additional properties. The number of key-value pairs should match the batch size."""
+        expected_keys = [str(i+1) for i in range(bs)]
+        json_schema = (json_schema, expected_keys)
+
+    else:
+        json_schema = {}
+
+    return json_schema
+
+
+def json_schema_cls_crop(model: str):
+    if model == 'gpt-4o-2024-08-06':
+        json_schema, json_properties = {}, {}
+        json_properties.update({"description": {"type": "string", "description": "detailed description of crop."}})
+        json_properties.update({"classes": {"type": "array", "items": {"type": "string"}}})
+        json_schema["name"] = "schema"
+        json_schema["strict"] = True
+        json_schema["schema"] = {"type": "object", "properties": json_properties, "required": ["description", "classes"], "additionalProperties": False}
+
+    elif model == 'gemini-1.5-pro':
+        json_schema = genai.protos.Schema(
+            type=genai.protos.Type.OBJECT,
+            properties={
+                "description": genai.protos.Schema(
+                    type=genai.protos.Type.STRING,
+                    description="detailed description of crop."
+                ),
+                "classes": genai.protos.Schema(
+                    type=genai.protos.Type.ARRAY,
+                    items=genai.protos.Schema(
+                        type=genai.protos.Type.STRING
+                    )
+                )
+            },
+            required=["description", "classes"],
+        )
+
+    elif model == 'claude-3-5-sonnet-20240620':
+        json_schema = """As a reminder, your response should be formatted as a JSON object with the following structure:\n\n""" +\
+                      """{\n""" +\
+                      """  "description": "detailed description of crop.",\n""" +\
+                      """  "classes": ["class_1", "class_2", ...]\n""" +\
+                      """}\n\n""" +\
+                      """Where:\n\n""" +\
+                      """- description: This field should provide a detailed description of the cropped image, highlighting key features and elements that influenced your classification decisions.\n""" +\
+                      """- classes: This field should be a list of strings representing the classes you have identified in the cropped image.\n\n""" +\
+                      """Please ensure that your response adheres to this format and provides clear and detailed reasoning for each class identified in the image."""
+        expected_keys = ["description", "classes"]
+        json_schema = (json_schema, expected_keys)
+
+    return json_schema
+
+
+# --Full Text Prompt----------------------------------------------------------------
+
+
+def full_prompt_cls(prompt_no: int, class_list: list, batch_size: int, model: str):
+    messages = []
+
+    system_prompt = system_prompts_cls(prompt_no, class_list, batch_size)
+    messages.append({"role": "system", "content": system_prompt})
+    for i in range(batch_size):
+        user_prompt = f"Please identify the class of the image provided. The class has to belong to one of the classes specified in the system prompt. Output the answer in a JSON, with key '{i+1}'."
+        messages.append({"role": "user", "content": [{"type": "text", "text": user_prompt}, {"type": "image_url", "image_url": {"url": "<img>", "detail": "high"}}]})
+
+    json_schema = json_schema_cls(batch_size, model)
+
+    return {"messages": messages, "json_schema": json_schema}
+
+
+def full_prompt_cls_crop(class_list: list, model: str):
+    messages = []
+
+    system_prompt = system_prompt_cls_crop(class_list)
+    messages.append({"role": "system", "content": system_prompt})
+
+    messages.append({"role": "user", "content": [{"type": "text", "text": """Here is the full image for some additional context."""}, {"type": "image_url", "image_url": {"url": "<img>", "detail": "high"}}]})
+    messages.append({"role": "user", "content": [{"type": "text", "text": "Here is the cropped portion of the full image."}, {"type": "image_url", "image_url": {"url": "<img>", "detail": "high"}}]})
+
+    user_prompt = f"""Identify all the objects in the cropped image. The objects must belong to the list provided. Return a JSON, with key "classes" for the classes. Don't repeat any object. Make sure that the objects belong to {class_list}."""
+    messages.append({"role": "user", "content": [{"type": "text", "text": user_prompt}]})
+
+    json_schema = json_schema_cls_crop(model)
+
+    return {"messages": messages, "json_schema": json_schema}
+
+
+# --Full Prompt----------------------------------------------------------------
 
 
 @MFMWrapper.register_task('classify')
-def classify(model: MFMWrapper, file_name: Union[List[str], str], prompt: Optional[Dict] = None, prompt_no: int = -1, crop: bool = True, labels: List[str] = IMAGENET_LABELS, return_dict=False):
+def classify(
+    model: MFMWrapper,
+    file_name: Union[List[str], str],
+    prompt: Optional[Dict] = None,
+    prompt_no: int = -1,
+    crop: bool = True,
+    labels: List[str] = IMAGENET_LABELS,
+    return_dict=False
+):
     """Classify a batch of images using the MFM.
 
     Args:
@@ -39,10 +254,10 @@ def classify(model: MFMWrapper, file_name: Union[List[str], str], prompt: Option
 
     if crop:
         imgs = [crop_img(img) for img in imgs]
-    imagenet_labels = labels
+    class_labels = labels
 
     if not prompt:
-        prompt = full_prompt_cls(prompt_no, imagenet_labels, len(imgs), model.name)
+        prompt = full_prompt_cls(prompt_no, class_labels, len(imgs), model.name)
 
     prompt = replace_images_in_prompt(prompt, imgs)
 
@@ -58,3 +273,76 @@ def classify(model: MFMWrapper, file_name: Union[List[str], str], prompt: Option
         return resp_list, tokens, error_status
     else:
         return [dic["class"] for dic in resp_list], tokens
+
+
+@MFMWrapper.register_task('classify_crop')
+def classify_crop(
+    model: MFMWrapper,
+    file_name: Union[List[str], str],
+    prompt: Optional[Dict] = None,
+    crop: bool = False,
+    labels: List[str] = COCO_DETECT_LABELS,
+    return_dict=False
+):
+    """Classify a batch of images using the MFM.
+    Has a higher recall (but worse precision) than the above algorithm. Uses the image and 5 crops of the image to classify.
+    Takes a union of the classes predicted by the model for the image and the crops.
+
+    Args:
+        model: The MFM model to use.
+        file_name: The path(s) to the image file to classify.
+        prompt: The prompt to use for the classification.
+        prompt_no: The prompt number to use for the classification (if prompt is None).
+        crop: Whether to resize and crop the image before classification.
+        labels: The list of labels to use for classification.
+        return_dict: Whether to return the result as a list of dictionaries.
+
+    Returns:
+        (if return_dict is True)
+        resp_list: List of dicts, each containing the "class"
+        tokens: A tuple containing the completion tokens and the prompt tokens
+        error_status: A boolean indicating whether an error occurred
+
+        OR
+
+        (if return_dict is False)
+        resp_list: List of the predicted classes
+        tokens: A tuple containing the completion tokens and the prompt tokens
+    """
+
+    file_name = file_name if isinstance(file_name, list) else [file_name]
+    imgs = [Image.open(fn.strip()).convert('RGB') for fn in file_name]
+
+    if crop:
+        imgs = [crop_img(img) for img in imgs]
+    class_labels = labels
+
+    all_classes, error_status = [], False
+    for img_idx, img in enumerate(imgs):
+        width, height = img.size
+        cropped_images = []
+        for i in range(2):
+            for j in range(2):
+                cropped_images.append(img.crop((j * width // 2, i * height // 2, (j + 1) * width // 2, (i + 1) * height // 2)))
+
+        # add the center crop
+        cropped_images.append(img.crop((width // 4, height // 4, 3 * width // 4, 3 * height // 4)))
+        pred_classes = set()
+        for msg_idx in range(len(cropped_images)):
+            full_prompt = full_prompt_cls_crop(class_labels, model.name) if not prompt else prompt
+            full_prompt = replace_images_in_prompt(full_prompt, [img, cropped_images[msg_idx]])
+
+            resp_dict, tokens, err = model.send_message(full_prompt)
+            if err:
+                error_status = True
+                continue
+
+            for cls in resp_dict["classes"]:
+                pred_classes.add(cls)
+
+        all_classes.append({"class": list(pred_classes), "file_name": file_name[img_idx].strip()})
+
+    if return_dict:
+        return all_classes, tokens, error_status
+    else:
+        return [dic["class"] for dic in all_classes], tokens
