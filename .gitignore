@@ -168,3 +168,5 @@ commands.txt
 run_eval.sh
 scripts/data/logs
 taskit/utils/metadata/coco-group.json
+notebooks/demo.ipynb
+extras

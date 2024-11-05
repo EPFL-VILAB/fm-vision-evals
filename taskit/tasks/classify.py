@@ -4,7 +4,7 @@ from PIL import Image
 import google.generativeai as genai
 
 from taskit.mfm import MFMWrapper
-from taskit.utils.data import replace_images_in_prompt, crop_img
+from taskit.utils.data import replace_images_in_prompt, crop_img, save_images
 from taskit.utils.data_constants import IMAGENET_LABELS, COCO_DETECT_LABELS
 
 
@@ -55,6 +55,13 @@ def system_prompts_cls(prompt_no: int, class_list: list, batch_size: int) -> str
                         """Output your classifications in JSON format, with each image number as the key and the corresponding class name as the value. Be as precise and specific as possible in your classifications. If you're unsure, choose the most likely class based on the visual information available. Here's the expected output format:\n\n""" +\
                         f"""{{"1": "class_name_1", "2": "class_name_2", ..., "{batch_size}": "class_name_{batch_size}"}}\n\n""" +\
                         f"""Remember, only output the JSON object with your classifications. Do not include any explanations or additional text. Classes: {class_list}."""
+
+    return system_prompt
+
+
+def system_prompts_cls_mult(class_list: list) -> str:
+    system_prompt = """You are an AI assistant tasked with identify all the classes in images. You will be provided with an image and must assign each image to one or more of the classes. """ +\
+                    f"""The classes are: {class_list}. Output the class names in a JSON, with key "classes". For example, {{"classes": [list of classes]}}  """
 
     return system_prompt
 
@@ -135,6 +142,49 @@ def json_schema_cls(bs: int, model: str):
     return json_schema
 
 
+def json_schema_cls_mult(model: str):
+    if model == 'gpt-4o-2024-08-06':
+        json_schema, json_properties = {}, {}
+        json_properties.update({"description": {"type": "string", "description": "detailed description of image."}})
+        json_properties.update({"classes": {"type": "array", "items": {"type": "string"}}})
+        json_schema["name"] = "schema"
+        json_schema["strict"] = True
+        json_schema["schema"] = {"type": "object", "properties": json_properties, "required": ["description", "classes"], "additionalProperties": False}
+
+    elif model == 'gemini-1.5-pro':
+        json_schema = genai.protos.Schema(
+            type=genai.protos.Type.OBJECT,
+            properties={
+                "description": genai.protos.Schema(
+                    type=genai.protos.Type.STRING,
+                    description="detailed description of image."
+                ),
+                "classes": genai.protos.Schema(
+                    type=genai.protos.Type.ARRAY,
+                    items=genai.protos.Schema(
+                        type=genai.protos.Type.STRING
+                    )
+                )
+            },
+            required=["description", "classes"],
+        )
+
+    elif model == 'claude-3-5-sonnet-20240620':
+        json_schema = """As a reminder, your response should be formatted as a JSON object with the following structure:\n\n""" +\
+                      """{\n""" +\
+                      """  "description": "detailed description of image.",\n""" +\
+                      """  "classes": ["class_1", "class_2", ...]\n""" +\
+                      """}\n\n""" +\
+                      """Where:\n\n""" +\
+                      """- description: This field should provide a detailed description of the image, highlighting key features and elements that influenced your classification decisions.\n""" +\
+                      """- classes: This field should be a list of strings representing the classes you have identified in the image.\n\n""" +\
+                      """Please ensure that your response adheres to this format and provides clear and detailed reasoning for each class identified in the image."""
+        expected_keys = ["description", "classes"]
+        json_schema = (json_schema, expected_keys)
+
+    return json_schema
+
+
 def json_schema_cls_crop(model: str):
     if model == 'gpt-4o-2024-08-06':
         json_schema, json_properties = {}, {}
@@ -195,6 +245,22 @@ def full_prompt_cls(prompt_no: int, class_list: list, batch_size: int, model: st
     return {"messages": messages, "json_schema": json_schema}
 
 
+def full_prompt_cls_mult(class_list: list, model: str):
+    messages = []
+
+    system_prompt = system_prompts_cls_mult(class_list)
+    messages.append({"role": "system", "content": system_prompt})
+
+    messages.append({"role": "user", "content": [{"type": "text", "text": """Here is the image for which you need to identify all the classes."""}, {"type": "image_url", "image_url": {"url": "<img>", "detail": "high"}}]})
+
+    user_prompt = f"""Identify all the classes in the image. The classes must belong to the list provided. Return a JSON, with key "classes" for the classes. Make sure that the classes belong to {class_list}."""
+    messages.append({"role": "user", "content": [{"type": "text", "text": user_prompt}]})
+
+    json_schema = json_schema_cls_mult(model)
+
+    return {"messages": messages, "json_schema": json_schema}
+
+
 def full_prompt_cls_crop(class_list: list, model: str):
     messages = []
 
@@ -218,7 +284,7 @@ def full_prompt_cls_crop(class_list: list, model: str):
 @MFMWrapper.register_task('classify')
 def classify(
     model: MFMWrapper,
-    file_name: Union[List[str], str],
+    file_name: Union[List[str], str, List[Image.Image], Image.Image],
     prompt: Optional[Dict] = None,
     prompt_no: int = -1,
     crop: bool = True,
@@ -229,7 +295,7 @@ def classify(
 
     Args:
         model: The MFM model to use.
-        file_name: The path(s) to the image file to classify.
+        file_name: The path(s) to the image file to classify. Can also be a list of PIL Image objects, in which case images are saved to a temporary directory.
         prompt: The prompt to use for the classification.
         prompt_no: The prompt number to use for the classification (if prompt is None).
         crop: Whether to resize and crop the image before classification.
@@ -248,6 +314,10 @@ def classify(
         resp_list: List of the predicted classes
         tokens: A tuple containing the completion tokens and the prompt tokens
     """
+    if isinstance(file_name, Image.Image):
+        file_name = [file_name]
+    if isinstance(file_name, list) and isinstance(file_name[0], Image.Image):
+        file_name = save_images(file_name, save_path='temp_images')
 
     file_name = file_name if isinstance(file_name, list) else [file_name]
     imgs = [Image.open(fn.strip()).convert('RGB') for fn in file_name]
@@ -273,12 +343,67 @@ def classify(
         return resp_list, tokens, error_status
     else:
         return [dic["class"] for dic in resp_list], tokens
+        
+
+@MFMWrapper.register_task('classify_mult')
+def classify_mult(
+    model: MFMWrapper,
+    file_name: Union[List[str], str],
+    prompt: Optional[Dict] = None,
+    crop: bool = True,
+    labels: List[str] = IMAGENET_LABELS,
+    return_dict=False
+):
+    """Identify all the classes present in a batch of images using the MFM. Unlike the classify task, this task requires the model to identify *all* the classes present in the image.
+
+    Args:
+        model: The MFM model to use.
+        file_name: The path(s) to the image file.
+        crop: Whether to resize and crop the image before classification.
+        labels: The list of labels to use for classification.
+        return_dict: Whether to return the result as a list of dictionaries.
+
+    Returns:
+        (if return_dict is True)
+        resp_list: List of dicts, each containing the "class"
+        tokens: A tuple containing the completion tokens and the prompt tokens
+        error_status: A boolean indicating whether an error occurred
+
+        OR
+
+        (if return_dict is False)
+        resp_list: List of the predicted classes
+        tokens: A tuple containing the completion tokens and the prompt tokens
+    """
+    file_name = file_name if isinstance(file_name, list) else [file_name]
+    imgs = [Image.open(fn.strip()).convert('RGB') for fn in file_name]
+
+    if crop:
+        imgs = [crop_img(img) for img in imgs]
+    class_labels = labels
+
+    all_classes, error_status = [], False
+    for img_idx, img in enumerate(imgs):
+        full_prompt = full_prompt_cls_mult(class_labels, model.name) if not prompt else prompt
+        full_prompt = replace_images_in_prompt(full_prompt, [img])
+
+        resp_dict, tokens, err = model.send_message(full_prompt)
+        if err:
+            error_status = True
+            continue
+
+        all_classes.append({"class": resp_dict["classes"], "file_name": file_name[img_idx].strip()})
+
+    if return_dict:
+        return all_classes, tokens, error_status
+    else:
+        return [dic["class"] for dic in all_classes], tokens
 
 
 @MFMWrapper.register_task('classify_crop')
 def classify_crop(
     model: MFMWrapper,
-    file_name: Union[List[str], str],
+    file_name: Union[List[str], str, List[Image.Image], Image.Image],
     prompt: Optional[Dict] = None,
     crop: bool = False,
     labels: List[str] = COCO_DETECT_LABELS,

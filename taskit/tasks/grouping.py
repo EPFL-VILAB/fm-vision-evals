@@ -10,7 +10,7 @@ from skimage.segmentation import slic
 from PIL import Image
 
 from taskit.mfm import MFMWrapper
-from taskit.utils.data import replace_images_in_prompt, draw_around_superpixel
+from taskit.utils.data import replace_images_in_prompt, draw_around_superpixel, save_images
 
 # --System Prompt----------------------------------------------------------------
 
@@ -300,7 +300,7 @@ def process_point(
 @MFMWrapper.register_task('group')
 def group(
     model: MFMWrapper,
-    file_name: Union[List[str], str],
+    file_name: Union[List[str], str, List[Image.Image], Image.Image],
     point_list: Union[List[List[List[int]]], List[List[int]]],
     prompt: Optional[Dict] = None,
     prompt_no: int = -1,
@@ -316,7 +316,7 @@ def group(
 
     Args:
         model: The MFM model to use.
-        file_name: Path(s) to the image file(s) to process.
+        file_name: Path(s) to the image file(s) to process. Can also be a list of PIL Image objects, in which case images are saved to a temporary directory.
         point_list: Points around which to group pixels.
         prompt: Prompt for the task. Defaults to None.
         prompt_no: Prompt number. Defaults to -1.
@@ -336,9 +336,13 @@ def group(
         OR
 
         (if return_dict is False)
-        grouped_imgs: List of images with masks overlaid
+        grouped_imgs: List of images (np.ndarray) with masks overlaid
         tokens: A tuple containing the completion tokens and the prompt tokens
     """
+    if isinstance(file_name, Image.Image):
+        file_name = [file_name]
+    if isinstance(file_name, list) and isinstance(file_name[0], Image.Image):
+        file_name = save_images(file_name, save_path='temp_images')
 
     file_name = file_name if isinstance(file_name, list) else [file_name]
     point_list = point_list if isinstance(point_list[0][0], list) else [point_list]
@@ -381,5 +385,5 @@ def group(
     if return_dict:
         return resp_dict_list, (compl_tokens, prompt_tokens), error_status
     else:
-        grouped_imgs = model.eval(resp_dict_list, eval='eval_group', n_segments=n_segments, visualise=True, overlay_on_same_image=overlay_on_same_image)
+        grouped_imgs = model.eval(eval='eval_group', predictions=resp_dict_list, visualise=True, overlay_on_same_image=overlay_on_same_image)
         return grouped_imgs, (compl_tokens, prompt_tokens)

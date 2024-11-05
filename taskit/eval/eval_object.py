@@ -47,7 +47,7 @@ def draw_and_save_bounding_boxes(image_path, pred_dict):
 
 @MFMWrapper.register_eval('eval_detect')
 def eval_detect(
-    output_file: Union[List, str],
+    predictions: Union[List, str],
     invalid_files: list = [],
     read_from_file: bool = False,
     data_file_names: Optional[str] = None,
@@ -58,7 +58,7 @@ def eval_detect(
     Only works for single instance detection.
 
     Args:
-        output_file: Union[List, str], Path to output JSON file containing the model predictions, or a list of dictionaries with the model predictions
+        predictions: Union[List, str], Path to output JSON file containing the model predictions, or a list of dictionaries with the model predictions
         invalid_files: List of invalid files
         read_from_file: bool, whether to read data_file_names from file
         data_file_names: str, path to file containing all the data files. If read_from_file is False, this is ignored
@@ -74,10 +74,10 @@ def eval_detect(
         bbox_imgs: List of PIL Images with bounding boxes drawn
     """
 
-    if isinstance(output_file, list):
-        outputs = {'data': output_file}
+    if isinstance(predictions, list):
+        outputs = {'data': predictions}
     else:
-        with open(output_file, 'r') as f:
+        with open(predictions, 'r') as f:
             outputs = json.load(f)
 
     if read_from_file:

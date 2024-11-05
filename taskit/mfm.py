@@ -85,7 +85,7 @@ class MFMWrapper(metaclass=TaskRegistryABCMeta):
             raise ValueError(f"Task {task} not supported, please choose from {self.TASK_REGISTRY.keys()}")
         return task_func(model=self, file_name=file_name, **kwargs)
 
-    def eval(self, output_file: Union[Dict, str], eval: Optional[str] = None, **kwargs):
+    def eval(self, eval: Optional[str], predictions: Union[List, str], **kwargs):
         if eval is None:
             eval = self.default_evals[kwargs['task']]
         if eval in self.EVAL_REGISTRY:
@@ -93,7 +93,7 @@ class MFMWrapper(metaclass=TaskRegistryABCMeta):
         else:
             raise ValueError(f"Evaluation {eval} not supported, please choose from {self.EVAL_REGISTRY.keys()}")
         kwargs.pop('task', None)
-        return eval_func(output_file, **kwargs)
+        return eval_func(predictions, **kwargs)
 
     def send_message(self, message: Dict):
         raise NotImplementedError
@@ -131,7 +131,7 @@ class GPT4o(MFMWrapper):
                 if attempt == 2:
                     return None, (0, 0), True
 
-    def predict(self, task, file_name: str, **kwargs):
+    def predict(self, task, file_name, **kwargs):
         if task in self.default_settings:
             default_settings = self.default_settings[task]
             for k, v in default_settings.items():
@@ -200,7 +200,7 @@ class GeminiPro(MFMWrapper):
                 if attempt == 2:
                     return None, (0, 0), True
 
-    def predict(self, task, file_name: str, **kwargs):
+    def predict(self, task, file_name, **kwargs):
         if task in self.default_settings:
             default_settings = self.default_settings[task]
             for k, v in default_settings.items():
@@ -270,7 +270,7 @@ class ClaudeSonnet(MFMWrapper):
 
         return resp_dict, (compl_tokens, prompt_tokens), error_status
 
-    def predict(self, task, file_name: str, **kwargs):
+    def predict(self, task, file_name, **kwargs):
         if task in self.default_settings:
             default_settings = self.default_settings[task]
             for k, v in default_settings.items():

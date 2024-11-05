@@ -8,7 +8,7 @@ from PIL import Image
 from taskit.eval import eval_object
 from taskit.mfm import MFMWrapper
 from taskit.tasks import classify
-from taskit.utils.data import replace_images_in_prompt
+from taskit.utils.data import replace_images_in_prompt, save_images
 from taskit.utils.data_constants import COCO_DETECT_LABELS
 
 
@@ -441,7 +441,7 @@ def independent_zoom(
     x_positions = [int(width * marks[i]) for i in range(len(marks))]
     y_positions = [int(height * marks[i]) for i in range(len(marks))]
     if x_positions[0] == x_positions[1] or y_positions[0] == y_positions[1]:
-        return global_coords, (0, 0), True
+        return global_coords, (0, 0), True, False
 
     locations = ['top left', 'top center', 'top right', 'center left', 'center', 'center right', 'bottom left', 'bottom center', 'bottom right']
     for i in range(rows):
@@ -475,7 +475,7 @@ def independent_zoom(
 @MFMWrapper.register_task('detect')
 def detect(
     model: MFMWrapper,
-    file_name: Union[List[str], str],
+    file_name: Union[List[str], str, List[Image.Image], Image.Image],
     prompt: Optional[Dict] = None,
     prompt_no: int = -1,
     n_iters: int = 7,
@@ -488,7 +488,7 @@ def detect(
 
     Args:
         model: The MFM model to use.
-        file_name: The path(s) to the image file to detect objects in.
+        file_name: The path(s) to the image file to detect objects in. Can also be a list of PIL Image objects, in which case images are saved to a temporary directory.
         prompt: The prompt to use for detection
         prompt_no: The prompt number to use (if prompt is None).
         object_list: The list of objects to detect. If None, finds the objects via a classification algorithm. For multiple images, provide a list of lists.
@@ -504,9 +504,14 @@ def detect(
         OR
 
         (if return_dict is False)
-        resp_list: List of images with bounding boxes around the detected objects
+        resp_list: List of images (Image.Image) with bounding boxes around the detected objects
         tokens: A tuple containing the completion tokens and the prompt tokens
     """
+    if isinstance(file_name, Image.Image):
+        file_name = [file_name]
+    if isinstance(file_name, list) and isinstance(file_name[0], Image.Image):
+        file_name = save_images(file_name, save_path='temp_images')
+
     compl_tokens, prompt_tokens = 0, 0
     file_name = file_name if isinstance(file_name, list) else [file_name]
 
@@ -550,5 +555,5 @@ def detect(
     if return_dict:
         return resp_dict_list, (compl_tokens, prompt_tokens), error_status
     else:
-        bbox_imgs = model.eval(resp_dict_list, eval='eval_detect', visualise=True)
+        bbox_imgs = model.eval(eval='eval_detect', predictions=resp_dict_list, visualise=True)
         return bbox_imgs, (compl_tokens, prompt_tokens)

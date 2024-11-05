@@ -10,8 +10,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from tqdm import tqdm
 from taskit.mfm import get_mfm_wrapper
-from taskit.eval import eval_classify, eval_segment, eval_grouping, eval_depth
-from taskit.tasks import classify, segment, grouping, depth
+from taskit.eval import eval_classify, eval_segment, eval_grouping, eval_depth, eval_normals, eval_object
+from taskit.tasks import classify, segment, grouping, depth, normals, object
 from scripts.utils.log import Logger
 
 file_lock = threading.Lock()
@@ -28,7 +28,7 @@ def get_args():
     parser.add_argument('--api_key', type=str, required=True, help='API key for the MFM API')
 
     parser.add_argument('-t', '--task', default='', type=str,
-                        choices=['classify', 'segment', 'group', 'depth', 'normals'],
+                        choices=['classify', 'segment', 'group', 'depth', 'normals', 'detect'],
                         help='Task to evaluate MFM on')
     parser.add_argument('-e', '--eval_type', default='', type=str,
                         help='Type of eval to run')
@@ -133,9 +133,9 @@ def main(args, task_specific_args, eval_specific_args):
         log.info("Beginning evaluation")
         output_file = args.eval_output_file if args.only_eval else log.get_output_file()
         if args.eval_type:
-            eval_metric = model.eval(output_file=output_file, eval=args.eval_type, invalid_files=log.get_invalid_files(), **eval_specific_args)
+            eval_metric = model.eval(eval=args.eval_type, predictions=output_file, invalid_files=log.get_invalid_files(), **eval_specific_args)
         else:
-            eval_metric = model.eval(output_file=output_file, task=args.task, invalid_files=log.get_invalid_files())
+            eval_metric = model.eval(eval=None, predictions=output_file, task=args.task, invalid_files=log.get_invalid_files())
         log.info("Evaluation complete")
         log.log_update({"eval_metric": str(eval_metric)})
 

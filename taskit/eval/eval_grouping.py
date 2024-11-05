@@ -29,11 +29,10 @@ predefined_colors_sam = [
 
 @MFMWrapper.register_eval('eval_group')
 def eval_group(
-    output_file: Union[List, str],
+    predictions: Union[List, str],
     invalid_files: list = [],
     read_from_file: bool = False,
     data_file_names: Optional[str] = None,
-    n_segments: int = 400,
     visualise: bool = False,
     overlay_on_same_image: bool = False,
 ):
@@ -41,7 +40,7 @@ def eval_group(
     Finds mIoU of predicted masks wrt ground truth masks.
 
     Args:
-        output_file: Union[List, str], output file containing the model predictions
+        predictions: Union[List, str], Path to output JSON file containing the model predictions, or a list of dictionaries with the model predictions
         invalid_files: list, list of invalid files
         read_from_file: bool, whether to read data_file_names from file
         data_file_names: str, path to file containing all the data files. If read_from_file is False, this is ignored
@@ -59,10 +58,10 @@ def eval_group(
         mask_list: list of images with overlaid masks
     """
 
-    if isinstance(output_file, list):
-        outputs = {'data': output_file}
+    if isinstance(predictions, list):
+        outputs = {'data': predictions}
     else:
-        with open(output_file, 'r') as f:
+        with open(predictions, 'r') as f:
             outputs = json.load(f)
 
     if read_from_file:

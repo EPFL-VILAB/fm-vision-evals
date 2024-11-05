@@ -1,4 +1,5 @@
 import base64
+import os
 from copy import deepcopy
 from io import BytesIO
 from typing import List, Optional, Tuple
@@ -28,6 +29,17 @@ def decode_image(encoded_string: str) -> Image:
         image = Image.open(buffer)
         image.load()  # Force the image to be fully loaded while the buffer is still open
     return image
+
+
+def save_images(imgs: List[Image.Image], save_path: str = 'temp_images'):
+    """Function to save a list of images to a directory."""
+    file_paths = []
+    os.makedirs(save_path, exist_ok=True)
+    for i, img in enumerate(imgs):
+        file_path = os.path.join(save_path, f"temp_{i}.png")
+        img.save(file_path)
+        file_paths.append(file_path)
+    return file_paths
 
 
 def replace_images_in_prompt(full_prompt_output: dict, images: list):
@@ -232,8 +244,8 @@ def colorize(pred_array, label_to_id, color_map):
     """ Colorizes the segmentation map """
     height, width = pred_array.shape
     pred_img = np.zeros((height, width, 3), dtype=np.uint8)
-    for label, id in label_to_id.items():
-        pred_img[pred_array == id] = color_map[label]
+    for label, label_id in label_to_id.items():
+        pred_img[pred_array == label_id] = color_map[label]
 
     return pred_img
 

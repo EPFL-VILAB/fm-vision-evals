@@ -149,17 +149,17 @@ def find_relative_depths(depth_orders_preds, seg_pairs, segment_map):
 
 @MFMWrapper.register_eval('eval_depth')
 def eval_depth(
-    output_file: Union[List, str],
+    predictions: Union[List, str],
     invalid_files: list = [],
     read_from_file: bool = False,
     data_file_names: Optional[str] = None,
     n_segments: int = 100,
     visualise: bool = False,
 ):
-    """ Returns Kendall's tau and Spearman's rank correlation after reading outputs from 'output_file' using depth orders
+    """ Returns Kendall's tau and Spearman's rank correlation after reading outputs from 'predictions' using depth orders
 
         Args:
-            output_file: Union[List, str], Path to output JSON file containing the model predictions, or a list of dictionaries with the model predictions
+            predictions: Union[List, str], Path to output JSON file containing the model predictions, or a list of dictionaries with the model predictions
             invalid_files: list, list of invalid files
             read_from_file: bool, whether to read data_file_names from file
             data_file_names: str, path to file containing all the data files. If read_from_file is False, this is ignored
@@ -182,10 +182,10 @@ def eval_depth(
             depth_maps: list of depth maps
     """
 
-    if isinstance(output_file, list):
-        outputs = {'data': output_file}
+    if isinstance(predictions, list):
+        outputs = {'data': predictions}
     else:
-        with open(output_file, 'r') as f:
+        with open(predictions, 'r') as f:
             outputs = json.load(f)
 
     if read_from_file:

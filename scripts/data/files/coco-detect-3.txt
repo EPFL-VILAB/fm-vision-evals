@@ -1,10 +1,3 @@
 /datasets/coco/val2017/000000000285.jpg
 /datasets/coco/val2017/000000000785.jpg
 /datasets/coco/val2017/000000000802.jpg
-/datasets/coco/val2017/000000001425.jpg
-/datasets/coco/val2017/000000001490.jpg
-/datasets/coco/val2017/000000001675.jpg
-/datasets/coco/val2017/000000002149.jpg
-/datasets/coco/val2017/000000002261.jpg
-/datasets/coco/val2017/000000002532.jpg
-/datasets/coco/val2017/000000002587.jpg

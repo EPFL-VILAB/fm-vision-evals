@@ -8,17 +8,17 @@ from taskit.utils.data_constants import IMAGENET_LABELS
 
 @MFMWrapper.register_eval('eval_classify')
 def eval_classify(
-    output_file: Union[List, str],
+    predictions: Union[List, str],
     invalid_files: list = [],
     read_from_file: bool = False,
     data_file_names: Optional[str] = None,
     dataset: str = 'imagenet',
     labels: list = IMAGENET_LABELS
 ) -> Dict[str, float]:
-    """ Returns top-1 accuracy after reading outputs from 'output_file'
+    """ Returns top-1 accuracy after reading outputs from 'predictions'
 
         Args:
-            output_file: Union[Dict, str], output file containing the model predictions
+            predictions: Union[List, str], Path to output JSON file containing the model predictions, or a list of dictionaries with the model predictions
             data_file_names: str, path to file containing all the data files
             invalid_files: list, list of invalid files
             read_from_file: bool, whether to read data_file_names from file
@@ -35,10 +35,10 @@ def eval_classify(
     else:
         raise ValueError(f"Dataset {dataset} not supported by eval_classify")
 
-    if isinstance(output_file, list):
-        outputs = {'data': output_file}
+    if isinstance(predictions, list):
+        outputs = {'data': predictions}
     else:
-        with open(output_file, 'r') as f:
+        with open(predictions, 'r') as f:
             outputs = json.load(f)
 
     acc = 0

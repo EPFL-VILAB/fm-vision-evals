@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 from taskit.eval import eval_segment
 from taskit.mfm import MFMWrapper
-from taskit.utils.data import replace_images_in_prompt, draw_around_superpixel
+from taskit.utils.data import replace_images_in_prompt, draw_around_superpixel, save_images
 from taskit.utils.data_constants import COCO_SEMSEG_LABELS, COCO_COLOR_MAP
 
 
@@ -245,7 +245,7 @@ def full_prompt_segment(prompt_no: int, class_labels: list, shape: str, batch_si
 @MFMWrapper.register_task('segment')
 def segment(
     model: MFMWrapper,
-    file_name: Union[List[str], str],
+    file_name: Union[List[str], str, List[Image.Image], Image.Image],
     prompt: Optional[Dict] = None,
     prompt_no: int = -1,
     n_segments: int = 400,
@@ -259,7 +259,7 @@ def segment(
 
     Args:
         model: The MFM model to use.
-        file_name: The path(s) to the image file to segment.
+        file_name: The path(s) to the image file to segment. Can also be a list of PIL Image objects, in which case images are saved to a temporary directory.
         prompt: The prompt to use for segmentation.
         prompt_no: The prompt number to use (if prompt is None).
         n_segments: The number of segments to split the image into (using SLIC). The actual number of segments will be close but may be different.
@@ -278,9 +278,13 @@ def segment(
         OR
 
         (if return_dict is False)
-        resp_list: List of segment images (display using plt.imshow())
+        resp_list: List of segment images (np.ndarray) (display using plt.imshow())
         tokens: A tuple containing the completion tokens and the prompt tokens
     """
+    if isinstance(file_name, Image.Image):
+        file_name = [file_name]
+    if isinstance(file_name, list) and isinstance(file_name[0], Image.Image):
+        file_name = save_images(file_name, save_path='temp_images')
 
     file_name = file_name if isinstance(file_name, list) else [file_name]
     imgs = [Image.open(fn.strip()).convert('RGB') for fn in file_name]
@@ -331,5 +335,5 @@ def segment(
     if return_dict:
         return resp_dict_list, (compl_tokens, prompt_tokens), error_status
     else:
-        seg_maps = model.eval(resp_dict_list, eval='eval_segment', n_segments=n_segments, labels=labels, color_map=color_map, visualise=True)
+        seg_maps = model.eval(eval='eval_segment', predictions=resp_dict_list, n_segments=n_segments, labels=labels, color_map=color_map, visualise=True)
         return seg_maps, (compl_tokens, prompt_tokens)

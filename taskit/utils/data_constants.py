@@ -16,10 +16,10 @@ IMAGENET_LABELS = ["tench", "goldfish", "great white shark", "tiger shark", "ham
 O4_DEFAULTS = {
     'classify': {
         'prompt_no': 5,
-        'n_iters': 6,
     },
     'detect': {
-        'prompt_no': 6
+        'prompt_no': 6,
+        'n_iters': 6
     },
     'segment': {
         'prompt_no': 2,
@@ -75,6 +75,7 @@ CLAUDE_DEFAULTS = {
     'detect': {
         'prompt_no': 3,
         'n_iters': 7,
+        'classification_type': 'classify_mult'
     },
     'segment': {
         'prompt_no': 2,

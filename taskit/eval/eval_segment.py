@@ -207,7 +207,7 @@ def eval_metrics(results,
 
 @MFMWrapper.register_eval('eval_segment')
 def eval_segment(
-    output_file: Union[List, str],
+    predictions: Union[List, str],
     invalid_files: list = [],
     read_from_file: bool = False,
     data_file_names: Optional[str] = None,
@@ -219,11 +219,11 @@ def eval_segment(
     n_threads: int = 4,
     ignore_index: int = 255,
 ):
-    """Returns pixel accuracy and mIoU after reading outputs from 'output_file'
+    """Returns pixel accuracy and mIoU after reading outputs from 'predictions'
 
     Args:
 
-        output_file: Union[List, str], output file containing the model predictions
+        predictions: Union[List, str], Path to output JSON file containing the model predictions, or a list of dictionaries with the model predictions
         invalid_files: list, list of invalid files
         read_from_file: bool, whether to read data_file_names from file
         data_file_names: str, path to file containing all the data files. If read_from_file is False, this is ignored
@@ -249,10 +249,10 @@ def eval_segment(
             print(f"Warning: {label} not present in color map. Adding with black color.")
             color_map[label] = [0, 0, 0]
 
-    if isinstance(output_file, list):
-        outputs = {'data': output_file}
+    if isinstance(predictions, list):
+        outputs = {'data': predictions}
     else:
-        with open(output_file, 'r') as f:
+        with open(predictions, 'r') as f:
             outputs = json.load(f)
 
     if read_from_file:
@@ -267,6 +267,8 @@ def eval_segment(
         groundtruth = json.load(open('./taskit/utils/metadata/coco-segment.json'))  # dict mapping file_name to gt segmentation file_path
         for file_name in rgb_data_files:
             gt_arrays.append(np.array(Image.open(groundtruth[file_name])))
+    else:
+        label_to_id = {cls: i for i, cls in enumerate(labels)}
 
     # --Form the predicted images------------------------------------------------
     all_preds = []
