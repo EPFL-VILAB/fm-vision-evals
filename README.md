@@ -76,7 +76,7 @@ You should expect to see an output like the following:
 ### Documentation
 
 - For a walkthrough of using the API, please refer to the [API documentation](./notebooks/demo.ipynb).
-- We provide the documentation for the `taskit` package in [taskit documentation](./taskit/README_TASKIT.md).
+- We provide the documentation for the `taskit` package in [taskit documentation](README_TASKIT.md).
 
 ## License
 
