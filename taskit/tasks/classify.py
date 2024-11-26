@@ -60,8 +60,9 @@ def system_prompts_cls(prompt_no: int, class_list: list, batch_size: int) -> str
 
 
 def system_prompts_cls_mult(class_list: list) -> str:
-    system_prompt = """You are an AI assistant tasked with identify all the classes in images. You will be provided with an image and must assign each image to one or more of the classes. """ +\
-                    f"""The classes are: {class_list}. Output the class names in a JSON, with key "classes". For example, {{"classes": [list of classes]}}  """
+    system_prompt = """You are an AI assistant tasked with identifying all the classes in images. You will be provided with an image and must identify all the classes present in the image. """ +\
+                    f"""The classes are: {class_list}. Output the class names present in the image in a JSON, with key "classes". For example, {{"classes": [list of classes present in the image]}}.\n\n""" +\
+                    """Make sure you do not output any class that is not present in the image. Your goal is to accurately identify all the classes present in the image."""
 
     return system_prompt
 
@@ -118,7 +119,7 @@ def json_schema_cls(bs: int, model: str):
             required=[str(k+1) for k in range(bs)],
         )
 
-    elif model == 'claude-3-5-sonnet-20240620':
+    elif model == 'claude-3-5-sonnet-20240620' or model == 'llama-3.2-90b':
         json_schema = """Please provide your response in the following JSON format:\n\n""" +\
                       """{\n""" +\
                       """    "1": "class for image 1",\n""" +\
@@ -169,7 +170,7 @@ def json_schema_cls_mult(model: str):
             required=["description", "classes"],
         )
 
-    elif model == 'claude-3-5-sonnet-20240620':
+    elif model == 'claude-3-5-sonnet-20240620' or model == 'llama-3.2-90b':
         json_schema = """As a reminder, your response should be formatted as a JSON object with the following structure:\n\n""" +\
                       """{\n""" +\
                       """  "description": "detailed description of image.",\n""" +\
@@ -212,7 +213,7 @@ def json_schema_cls_crop(model: str):
             required=["description", "classes"],
         )
 
-    elif model == 'claude-3-5-sonnet-20240620':
+    elif model == 'claude-3-5-sonnet-20240620' or model == 'llama-3.2-90b':
         json_schema = """As a reminder, your response should be formatted as a JSON object with the following structure:\n\n""" +\
                       """{\n""" +\
                       """  "description": "detailed description of crop.",\n""" +\
@@ -392,6 +393,7 @@ def classify_mult(
             error_status = True
             continue
 
+        resp_dict["classes"] = [cls for cls in resp_dict["classes"] if cls in class_labels]  # remove classes that are not in the class list
         all_classes.append({"class": resp_dict["classes"], "file_name": file_name[img_idx].strip()})
 
     if return_dict:
@@ -465,6 +467,7 @@ def classify_crop(
             for cls in resp_dict["classes"]:
                 pred_classes.add(cls)
 
+        pred_classes = [cls for cls in pred_classes if cls in class_labels]  # remove classes that are not in the class list
         all_classes.append({"class": list(pred_classes), "file_name": file_name[img_idx].strip()})
 
     if return_dict:

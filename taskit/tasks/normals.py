@@ -215,7 +215,7 @@ def json_schema_normals(prompt_no: int, model: str):
                 required=["reasoning_steps", "right", "up", "out"],
             )
 
-    elif model == 'claude-3-5-sonnet-20240620':
+    elif model == 'claude-3-5-sonnet-20240620' or model == 'llama-3.2-90b':
         if prompt_no in [1, 2]:
             json_schema = "Please provide your response in the following JSON format:\n\n" +\
                 "{\n" +\
@@ -326,6 +326,7 @@ def normals(
         resp_list: List of normal maps normalized to 0-1 (np.ndarray) (display using plt.imshow())
         tokens: A tuple containing the completion tokens and the prompt tokens
     """
+    print(f'{shape}')
     if isinstance(file_name, Image.Image):
         file_name = [file_name]
     if isinstance(file_name, list) and isinstance(file_name[0], Image.Image):
@@ -356,7 +357,8 @@ def normals(
             if not error_status:
                 resp_dict.pop("reasoning_steps", None)
             else:
-                return None, tokens, error_status
+                resp_dict = {"right": "red", "up": "red", "out": "red"}
+                return index, resp_dict, tokens, error_status
 
             return index, resp_dict, tokens, error_status
 

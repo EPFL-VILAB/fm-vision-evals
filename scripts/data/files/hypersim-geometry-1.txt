@@ -1,0 +1,1 @@
+/datasets/hypersim/val/rgb/ai_048_002-cam_02/point_16_view_0_domain_rgb.png

@@ -100,7 +100,16 @@ def find_adjacent_segments(segments):
 # ==Visual Prompts==================================================================
 
 
-def draw_around_superpixel(img: Image.Image, segments: np.ndarray, seg_number: int, seg_type: str, color: str = "red", crop_width: int = None, radius: Optional[int] = 16) -> Image.Image:
+def draw_around_superpixel(
+    img: Image.Image,
+    segments: np.ndarray,
+    seg_number: int,
+    seg_type: str,
+    color: str = "red",
+    crop_width: int = None,
+    radius: Optional[int] = 16,
+    rectangle_width: int = 4,
+) -> Image.Image:
     """Function which marks a segment in an image with a bounding box, center point or boundary.
     If seg_type is 'rectangle', a bounding rectangle is drawn around the segment.
     If seg_type is 'point', a rectangle inscribed in the segment is found, and a filled circle of radius 'radius' is drawn at the center.
@@ -114,7 +123,7 @@ def draw_around_superpixel(img: Image.Image, segments: np.ndarray, seg_number: i
         color (str): Color of the visual marker. Can be 'red', 'green', 'blue' or 'yellow'
         crop_width (int): Width of the crop around the segment. If None, no cropping is done, and full image with marker is returned
         radius (Optional[int]): Radius of the point marker. Only used if seg_type is 'point'
-
+        rectangle_width (int): Width of the rectangle border. Only used if seg_type is 'rectangle'
     """
     assert seg_type in ['rectangle', 'point', 'curve'], "Invalid segment type"
     assert color in ['red', 'green', 'blue', 'yellow'], "Invalid color"
@@ -135,7 +144,7 @@ def draw_around_superpixel(img: Image.Image, segments: np.ndarray, seg_number: i
 
         img_pil = Image.fromarray((img * 255).astype(np.uint8))
         draw = ImageDraw.Draw(img_pil)
-        draw.rectangle([min_col, min_row, max_col, max_row], outline=color, width=4)
+        draw.rectangle([min_col, min_row, max_col, max_row], outline=color, width=rectangle_width)
 
     elif seg_type == 'point':
         rows, cols = np.where(mask)
@@ -271,7 +280,6 @@ def sample_segments(segments, min_picked=1, min_samples=100, seed=25, shuffle: b
             tuples.append((segment_ids[-1], segment_ids[0]))
 
         n_picked += 1
-
     if len(tuples) > min_samples and n_picked > min_picked:
         return tuples[:min_samples]
 

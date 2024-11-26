@@ -80,7 +80,7 @@ def compute_correl_metrics(optimal_xs, average_norm, seg_map, gt_normals, file_n
     return local_correl_tau, local_correl_rho, global_correl_tau, global_correl_rho
 
 
-def find_relative_normals(normal_orders_preds, seg_pairs, segment_map):
+def find_relative_normals(normal_orders_preds, seg_pairs, segment_map, smoothness_weight):
     normal_orders = []
 
     for i, dic in enumerate(normal_orders_preds):
@@ -148,7 +148,7 @@ def find_relative_normals(normal_orders_preds, seg_pairs, segment_map):
 
         # Define the objective function
         eps_noise = np.eye(n_points + n_edges) * 1e-8
-        objective = cp.Minimize(cp.quad_form(x, A_gt.T @ A_gt + eps_noise) + cp.quad_form(x, A_lt.T @ A_lt + eps_noise) + cp.quad_form(x, A_eq.T @ A_eq + eps_noise) + 20*cp.quad_form(x[:n_points], A_adj.T @ A_adj + eps_noise[:n_points, :n_points]))
+        objective = cp.Minimize(cp.quad_form(x, A_gt.T @ A_gt + eps_noise) + cp.quad_form(x, A_lt.T @ A_lt + eps_noise) + cp.quad_form(x, A_eq.T @ A_eq + eps_noise) + smoothness_weight*cp.quad_form(x[:n_points], A_adj.T @ A_adj + eps_noise[:n_points, :n_points]))
 
         prob = cp.Problem(objective, constraints)
         result = prob.solve()  # noqa
@@ -168,6 +168,7 @@ def eval_normals(
     data_file_names: Optional[str] = None,
     n_segments: int = 200,
     visualise: bool = False,
+    smoothness_weight: float = 5,
 ):
     """ Returns Kendall's tau and Spearman's rank correlation for normals after reading outputs from 'predictions'
 
@@ -178,6 +179,7 @@ def eval_normals(
             data_file_names: str, path to file containing all the data files. If read_from_file is False, this is ignored
             n_segments: int, number of segments to use for SLIC
             visualise: bool, whether to output surface normal maps instead of metrics
+            smoothness_weight: float, weight for the smoothness term in the optimization problem
 
         Returns:
             (If visualise is False)
@@ -190,7 +192,7 @@ def eval_normals(
             OR
 
             (If visualise is True)
-            normal_maps: List of normal maps
+            normal_maps: List of normal maps normalized to 0-1 (np.ndarray)
     """
 
     if isinstance(predictions, list):
@@ -228,7 +230,7 @@ def eval_normals(
         # Get the normal orders
         normal_orders_preds = output_dict['normal_orders']
         seg_pairs = output_dict['segment_pairs']
-        optimal_xs = find_relative_normals(normal_orders_preds, seg_pairs, segments)
+        optimal_xs = find_relative_normals(normal_orders_preds, seg_pairs, segments, smoothness_weight)
 
         if visualise:
             normal_arrays = []

@@ -28,6 +28,8 @@ class Logger:
         """
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        if not os.path.exists(path):
+            os.makedirs(path)
         self.output_file = os.path.join(path, f"{output_file_name}_{timestamp}.json")
         self.temp_output_file = os.path.join(path, f"temp_{output_file_name}_{timestamp}.txt")
         self.backup_file = os.path.join(backup_path, f"backup_{output_file_name}_{timestamp}.json")

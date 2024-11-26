@@ -80,7 +80,7 @@ def compute_correl_metrics(optimal_x, average_depth, seg_map, gt_depth, file_nam
     return -local_correl_tau, -local_correl_rho, -global_correl_tau, -global_correl_rho
 
 
-def find_relative_depths(depth_orders_preds, seg_pairs, segment_map):
+def find_relative_depths(depth_orders_preds, seg_pairs, segment_map, smoothness_weight):
     depth_orders, logprobs = [], []
 
     for i, ord_dict in enumerate(depth_orders_preds):
@@ -136,11 +136,11 @@ def find_relative_depths(depth_orders_preds, seg_pairs, segment_map):
     eps_noise = np.eye(n_points + n_edges) * 1e-8
 
     if len(logprobs) == 0:
-        objective = cp.Minimize(cp.quad_form(x, A_gt.T @ A_gt + eps_noise) + cp.quad_form(x, A_lt.T @ A_lt + eps_noise) + 20 * cp.quad_form(x[:n_points], A_adj.T @ A_adj + eps_noise[:n_points, :n_points]))  # objective function
+        objective = cp.Minimize(cp.quad_form(x, A_gt.T @ A_gt + eps_noise) + cp.quad_form(x, A_lt.T @ A_lt + eps_noise) + smoothness_weight * cp.quad_form(x[:n_points], A_adj.T @ A_adj + eps_noise[:n_points, :n_points]))  # objective function
     else:
-        objective = cp.Minimize(cp.quad_form(x, A_gt.T @ W_logprob_gt @ A_gt + eps_noise) + cp.quad_form(x, A_lt.T @ W_logprob_lt @ A_lt + eps_noise) + 20 * cp.quad_form(x[:n_points], A_adj.T @ A_adj + eps_noise[:n_points, :n_points]))
+        objective = cp.Minimize(cp.quad_form(x, A_gt.T @ W_logprob_gt @ A_gt + eps_noise) + cp.quad_form(x, A_lt.T @ W_logprob_lt @ A_lt + eps_noise) + smoothness_weight * cp.quad_form(x[:n_points], A_adj.T @ A_adj + eps_noise[:n_points, :n_points]))
 
-    prob = cp.Problem(objective, constraints)  
+    prob = cp.Problem(objective, constraints)
     result = prob.solve()  # noqa
     optimal_x = x.value[:n_points]
 
@@ -155,6 +155,7 @@ def eval_depth(
     data_file_names: Optional[str] = None,
     n_segments: int = 100,
     visualise: bool = False,
+    smoothness_weight: float = 10,
 ):
     """ Returns Kendall's tau and Spearman's rank correlation after reading outputs from 'predictions' using depth orders
 
@@ -165,6 +166,7 @@ def eval_depth(
             data_file_names: str, path to file containing all the data files. If read_from_file is False, this is ignored
             n_segments: int, number of segments to use for SLIC
             visualise: bool, whether to output depth maps instead of metrics
+            smoothness_weight: float, weight for the smoothness term in the optimization
 
         Returns:
             (If visualise is False)
@@ -179,7 +181,7 @@ def eval_depth(
             OR
 
             (If visualise is True)
-            depth_maps: list of depth maps
+            depth_maps: list of depth maps normalized to 0-1 (np.ndarray)
     """
 
     if isinstance(predictions, list):
@@ -216,7 +218,7 @@ def eval_depth(
         depth_orders_preds = output_dict['depth_orders']
         seg_pairs = output_dict['segment_pairs']
 
-        optimal_x = find_relative_depths(depth_orders_preds, seg_pairs, segments)  # Find the relative depths
+        optimal_x = find_relative_depths(depth_orders_preds, seg_pairs, segments, smoothness_weight)
 
         superpixel_relative_img = np.zeros_like(segments, dtype=np.float32)
         for idx, segment in enumerate(np.unique(segments)):

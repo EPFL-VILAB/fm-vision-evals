@@ -13,7 +13,7 @@ from taskit.utils.data_constants import COCO_SEMSEG_LABELS, COCO_COLOR_MAP, COCO
 
 def process_single_image(args):
     all_pred, color_map, label_to_id, rgb_data_file, n_segments, visualise, ignore_index = args
-    img = Image.open(rgb_data_file)
+    img = Image.open(rgb_data_file).convert('RGB')
     pred_array = np.array(flood_superpixels(img, all_pred, label_to_id, n_segments, ignore_index))
     if visualise:
         pred_img = colorize(pred_array, label_to_id, color_map)
@@ -242,7 +242,7 @@ def eval_segment(
         OR
 
         (If visualise is True)
-        seg_maps: List of segmentation maps
+        seg_maps: List of segmentation maps  (np.ndarray)
     """
     for label in labels:
         if label not in color_map:

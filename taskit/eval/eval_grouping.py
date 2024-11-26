@@ -55,7 +55,7 @@ def eval_group(
         OR
 
         (If visualise is True)
-        mask_list: list of images with overlaid masks
+        mask_list: list of images with overlaid masks (np.ndarray)
     """
 
     if isinstance(predictions, list):

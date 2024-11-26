@@ -163,10 +163,12 @@ cython_debug/
 
 playground/
 test.ipynb
+test_llama.ipynb
 commands.txt
 .env
-run_eval.sh
+*.sh
 scripts/data/logs
 taskit/utils/metadata/coco-group.json
 notebooks/demo_test.ipynb
 extras
+todo.txt

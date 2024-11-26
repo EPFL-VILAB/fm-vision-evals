@@ -23,12 +23,12 @@ def get_args():
                         help='YAML config file specifying default arguments')
 
     parser.add_argument('--model',
-                        choices=['gpt-4o-2024-08-06', 'gemini-1.5-pro', 'claude-3-5-sonnet-20240620'],
+                        choices=['gpt-4o-2024-08-06', 'gemini-1.5-pro', 'claude-3-5-sonnet-20240620', 'llama-3.2-90b'],
                         type=str, required=True, help='MFM API to use')
     parser.add_argument('--api_key', type=str, required=True, help='API key for the MFM API')
 
     parser.add_argument('-t', '--task', default='', type=str,
-                        choices=['classify', 'segment', 'group', 'depth', 'normals', 'detect'],
+                        choices=['classify', 'segment', 'segment_sans_context', 'segment_naive', 'group', 'group_sans_context', 'depth', 'normals', 'detect', 'detect_naive'],
                         help='Task to evaluate MFM on')
     parser.add_argument('-e', '--eval_type', default='', type=str,
                         help='Type of eval to run')
@@ -56,6 +56,8 @@ def get_args():
                         help='If evaluation is to be skipped.')
     parser.add_argument('--continue', action='store_true',
                         help='If the evaluation is to be continued from the last checkpoint.')
+    parser.add_argument('--ignore_error', action='store_true',
+                        help='If errors should be ignored.')
 
     args = parser.parse_args()
 
@@ -68,9 +70,10 @@ def get_args():
                     setattr(args, key, value)
 
     if args.config:
-        return args, config['task_specific_args'], config['eval_specific_args']
+        return args, config.get('task_specific_args', {}), config.get('eval_specific_args', {})
     else:
         return args, {}, {}
+
 
 def find_points_for_grouping(f):
     groundtruth = json.load(open('./taskit/utils/metadata/coco-group.json'))[f]
@@ -79,7 +82,6 @@ def find_points_for_grouping(f):
 
 
 def main(args, task_specific_args, eval_specific_args):
-
     log = Logger(path=args.output_dir, backup_path=args.backup_dir, error_path=args.error_dir, output_file_name=args.log_name)
     model = get_mfm_wrapper(args.model, args.api_key)
 
@@ -95,11 +97,11 @@ def main(args, task_specific_args, eval_specific_args):
         log.info("Beginning inference")
 
         def process_iter(index, f):
-            if args.task == 'group':
+            if args.task == 'group' or args.task == 'group_sans_context':
                 point_list = find_points_for_grouping(f)
                 task_specific_args['point_list'] = point_list
             resp_dict, tokens, error_status = model.predict(args.task, f, return_dict=True, **task_specific_args)
-            if error_status:
+            if error_status and not args.ignore_error:
                 log.log_invalid_file(f)
                 log.error(f"Error in processing {f}")
                 return index, None, tokens
@@ -135,7 +137,7 @@ def main(args, task_specific_args, eval_specific_args):
         if args.eval_type:
             eval_metric = model.eval(eval=args.eval_type, predictions=output_file, invalid_files=log.get_invalid_files(), **eval_specific_args)
         else:
-            eval_metric = model.eval(eval=None, predictions=output_file, task=args.task, invalid_files=log.get_invalid_files())
+            eval_metric = model.eval(eval=None, predictions=output_file, task=args.task, invalid_files=log.get_invalid_files(), **eval_specific_args)
         log.info("Evaluation complete")
         log.log_update({"eval_metric": str(eval_metric)})
 

@@ -1,0 +1,5 @@
+/datasets/coco/val2017/000000370900.jpg
+/datasets/coco/val2017/000000180011.jpg
+/datasets/coco/val2017/000000360393.jpg
+/datasets/coco/val2017/000000113403.jpg
+/datasets/coco/val2017/000000366225.jpg

@@ -7,9 +7,11 @@ import anthropic
 import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 from openai import OpenAI
+from PIL import Image
+from together import Together
 
 from taskit.utils.data import decode_image
-from taskit.utils.data_constants import O4_DEFAULTS, GEMINI_DEFAULTS, CLAUDE_DEFAULTS
+from taskit.utils.data_constants import O4_DEFAULTS, GEMINI_DEFAULTS, CLAUDE_DEFAULTS, LLAMA_DEFAULTS
 
 
 # ==Class Definitions==================================================================
@@ -247,6 +249,7 @@ class ClaudeSonnet(MFMWrapper):
         compl_tokens, prompt_tokens, error_status = 0, 0, True
         for _ in range(5):
             try:
+                response = None
                 response = self.client.messages.create(
                     model=self.name,
                     max_tokens=4000,
@@ -265,8 +268,85 @@ class ClaudeSonnet(MFMWrapper):
             except Exception as e:
                 print(f"Error in sending message: {e}")
                 resp_dict = None
-                if response and response.usage:
+                if (response is not None) and response.usage:
                     compl_tokens, prompt_tokens = compl_tokens + response.usage.output_tokens, prompt_tokens + response.usage.input_tokens
+
+        return resp_dict, (compl_tokens, prompt_tokens), error_status
+
+    def predict(self, task, file_name, **kwargs):
+        if task in self.default_settings:
+            default_settings = self.default_settings[task]
+            for k, v in default_settings.items():
+                kwargs[k] = kwargs.get(k, v)
+        return super().predict(task, file_name, **kwargs)
+
+
+# --Llama----------------------------------------------------------------
+
+
+class Llama_Together(MFMWrapper):
+
+    def __init__(self, api_key):
+        self.client = Together(api_key=api_key)
+        self.name = 'llama-3.2-90b'
+        self.seed = 42
+        self.default_settings = LLAMA_DEFAULTS
+        
+    def _image_token_cost(self, img_str: str):
+        img = decode_image(img_str)
+        return min(2, max(img.height // 560, 1)) * min(2, max(img.width // 560, 1)) * 1601
+
+    def parse_message(self, all_messages: Dict):
+        messages = all_messages['messages']
+        json_schema, expected_keys = all_messages['json_schema']
+
+        messages.append({"role": "user", "content": json_schema})
+        messages.append({"role": "user", "content": "Output only the json, and nothing else."})
+        
+        # Find the token cost for images
+        img_token_costs = 0
+        for message in all_messages['messages'][1:]:
+            if message['role'] == 'user':
+                if isinstance(message['content'], list):
+                    for m in message['content']:
+                        if m['type'] == 'image_url':
+                            img_data = m['image_url']['url'].replace('data:image/png;base64,', '')
+                            img_token_costs += self._image_token_cost(img_data)
+
+        return messages, expected_keys, img_token_costs
+
+    def send_message(self, message: Dict):
+        messages, expected_keys, img_token_costs = self.parse_message(message)
+
+        compl_tokens, prompt_tokens, error_status = 0, 0, True
+        for times in range(5):
+            try:
+                response = None
+                response = self.client.chat.completions.create(
+                    model="meta-llama/Llama-3.2-90B-Vision-Instruct-Turbo",
+                    messages=messages,
+                    max_tokens=4000,
+                    seed=self.seed,
+                    temperature=0,
+                )
+                json_start = response.choices[0].message.content.find('{')
+                json_end = response.choices[0].message.content.rfind('}') + 1
+                json_content = response.choices[0].message.content[json_start:json_end]
+                resp_dict = json.loads(json_content)
+                compl_tokens, prompt_tokens = compl_tokens + response.usage.completion_tokens, prompt_tokens + response.usage.prompt_tokens + img_token_costs
+                if all([key in resp_dict for key in expected_keys]) and len(resp_dict) == len(expected_keys):
+                    error_status = False
+                    break
+
+            except Exception as e:
+                print(f"Error in sending message: {e}")
+                resp_dict = None
+                if (response is not None) and response.usage:
+                    compl_tokens, prompt_tokens = compl_tokens + response.usage.completion_tokens, prompt_tokens + response.usage.prompt_tokens
+                if not isinstance(e, json.JSONDecodeError) and times == 2:
+                    break
+                if response is not None and response.usage.completion_tokens >= 4000:
+                    break
 
         return resp_dict, (compl_tokens, prompt_tokens), error_status
 
@@ -288,5 +368,7 @@ def get_mfm_wrapper(model_name: str, api_key: str) -> MFMWrapper:
         return GeminiPro(api_key=api_key)
     elif model_name.lower() == 'claude-3-5-sonnet-20240620':
         return ClaudeSonnet(api_key=api_key)
+    elif model_name.lower() == 'llama-3.2-90b':
+        return Llama_Together(api_key=api_key)
     else:
         raise ValueError(f"Unsupported model name '{model_name}'")

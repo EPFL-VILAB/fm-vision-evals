@@ -250,7 +250,7 @@ def json_schema_depth(prompt_no: int, model: str):
                 required=["near"]
             )
 
-    elif model == 'claude-3-5-sonnet-20240620':
+    elif model == 'claude-3-5-sonnet-20240620' or model == 'llama-3.2-90b':
         if prompt_no in [1, 2]:
             json_schema = "Please provide your response in the following JSON format:\n\n" +\
                 "{\n" +\
@@ -361,6 +361,7 @@ def depth(
         resp_list: List of depth maps normalized to 0-1 (np.ndarray) (display using plt.imshow())
         tokens: A tuple containing the completion tokens and the prompt tokens
     """
+    print(f'shape: {shape}')
     if isinstance(file_name, Image.Image):
         file_name = [file_name]
     if isinstance(file_name, list) and isinstance(file_name[0], Image.Image):
@@ -394,7 +395,8 @@ def depth(
                     resp_dict["depth_order"] = [resp_dict["near"], "red" if resp_dict["near"] == "blue" else "blue"]
                     resp_dict.pop("near")
             if error_status:
-                return index, None, tokens, error_status
+                resp_dict = {"depth_order": ["red", "blue"]}
+                return index, resp_dict, tokens, error_status
 
             return index, resp_dict, tokens, error_status
 
