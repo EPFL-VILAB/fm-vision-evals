@@ -164,6 +164,43 @@ LLAMA_DEFAULTS = {
     }
 }
 
+QWEN2_DEFAULTS = {
+    'classify': {
+        'prompt_no': 3,
+    },
+    'detect': {
+        'prompt_no': 6,
+        'n_iters': 6
+    },
+    'detect_naive': {
+        'prompt_no': 5,
+    },
+    'segment': {
+        'prompt_no': 2,
+        'shape': 'rectangle'
+    },
+    'segment_sans_context': {
+        'prompt_no': 1,
+        'shape': 'rectangle',
+        'n_segments': 400,
+    },
+    'segment_naive': {
+        'prompt_no': 5,
+    },
+    'group': {
+        'prompt_no': 2,
+        'shape': 'curve'
+    },
+    'depth': {
+        'prompt_no': 4,
+        'shape': 'curve'
+    },
+    'normals': {
+        'prompt_no': 4,
+        'shape': 'rectangle'
+    }
+}
+
 
 # ==Miscellaneous==================================================================
 

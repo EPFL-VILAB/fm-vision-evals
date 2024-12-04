@@ -855,6 +855,9 @@ def json_schema_detect(prompt_no: int, obj: str, model: str):
             expected_keys = [str(k+1) for k in range(1)]
 
         json_schema = (json_schema, expected_keys)
+    
+    else:
+        json_schema = {}
 
     return json_schema
 

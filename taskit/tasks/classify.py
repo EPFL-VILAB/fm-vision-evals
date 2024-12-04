@@ -33,7 +33,7 @@ def system_prompts_cls(prompt_no: int, class_list: list, batch_size: int) -> str
                         """1. Analyze each image thoroughly, considering all visible elements, objects, and context clues.\n\n""" +\
                         """2. Select the most appropriate class for each image based on your analysis. If an image contains multiple objects or elements, choose the class that best represents the main subject or most prominent feature of the image.\n\n""" +\
                         f"""3. Present your classifications in a JSON format. The keys should represent the image number (starting from 1 and ending at {batch_size}), and the values should represent the assigned class. For example:\n\n""" +\
-                        f"""{{"1": "{class_list[0]}", "2": "{class_list[2]}", "3": "{class_list[1]}", ... , "{batch_size}": "{class_list[9]}"}}\n\n""" +\
+                        f"""{{"1": "{class_list[0]}", "2": "{class_list[2]}", "3": "{class_list[1]}", ... , "{batch_size}": "{class_list[-1]}"}}\n\n""" +\
                         """If you are unsure about a classification:\n""" +\
                         """a. Choose the most likely class based on the available information and your expert knowledge.\n""" +\
                         """b. Do not express uncertainty in your output or suggest alternative classes.\n""" +\

@@ -11,7 +11,9 @@ from PIL import Image
 from together import Together
 
 from taskit.utils.data import decode_image
-from taskit.utils.data_constants import O4_DEFAULTS, GEMINI_DEFAULTS, CLAUDE_DEFAULTS, LLAMA_DEFAULTS
+from taskit.utils.data_constants import O4_DEFAULTS, GEMINI_DEFAULTS, CLAUDE_DEFAULTS, LLAMA_DEFAULTS, QWEN2_DEFAULTS
+
+import requests
 
 
 # ==Class Definitions==================================================================
@@ -349,6 +351,66 @@ class Llama_Together(MFMWrapper):
                     break
 
         return resp_dict, (compl_tokens, prompt_tokens), error_status
+
+    def predict(self, task, file_name, **kwargs):
+        if task in self.default_settings:
+            default_settings = self.default_settings[task]
+            for k, v in default_settings.items():
+                kwargs[k] = kwargs.get(k, v)
+        return super().predict(task, file_name, **kwargs)
+    
+
+# --Qwen-VL2-------------------------------------------------------------
+
+
+class QwenVL2(MFMWrapper):
+    
+    ADDR = "http://127.0.0.1:8000/"
+
+    def __init__(self, addr=None):
+        self.addr = addr or QwenVL2.ADDR
+        self.name = 'Qwen2-VL-72B-Instruct'
+        self.default_settings = QWEN2_DEFAULTS
+        
+    def send_request(self, messages: Dict, max_tokens: int, output_format: str = 'json'):
+        try:
+            response = requests.post(self.addr, json={"messages": messages, "max_new_tokens": max_tokens, "output_format": output_format})
+            response = response.json()
+            return response
+        except requests.exceptions.RequestException as e:
+            return {"error": str(e)}
+
+    def send_message(self, message: Dict):
+        messages, json_schema = message['messages'], message['json_schema']
+        
+        for m in messages:
+            if m['role'] == 'user':
+                if isinstance(m['content'], list):
+                    for content in m['content']:
+                        if content['type'] == 'image_url':
+                            if 'url' in content['image_url']:
+                                content['image_url'] = content['image_url']['url']
+            
+        for attempt in range(3):
+            try:
+                response = self.send_request(
+                    messages=messages,
+                    max_tokens=4000,
+                    output_format="text"
+                )
+
+                print(response)
+                response = response["output"]
+                if isinstance(response, list) and len(response) == 1:
+                    response = response[0]
+                
+                resp_dict = response
+
+                return resp_dict, (0, 0), False
+            except Exception as e:
+                print(f"Error in sending message: {e}")
+                if attempt == 2:
+                    return None, (0, 0), True
 
     def predict(self, task, file_name, **kwargs):
         if task in self.default_settings:
