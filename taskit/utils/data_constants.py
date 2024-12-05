@@ -176,16 +176,8 @@ QWEN2_DEFAULTS = {
         'prompt_no': 5,
     },
     'segment': {
-        'prompt_no': 2,
-        'shape': 'rectangle'
-    },
-    'segment_sans_context': {
         'prompt_no': 1,
-        'shape': 'rectangle',
-        'n_segments': 400,
-    },
-    'segment_naive': {
-        'prompt_no': 5,
+        'shape': 'rectangle'
     },
     'group': {
         'prompt_no': 2,

@@ -182,6 +182,8 @@ def json_schema_cls_mult(model: str):
                       """Please ensure that your response adheres to this format and provides clear and detailed reasoning for each class identified in the image."""
         expected_keys = ["description", "classes"]
         json_schema = (json_schema, expected_keys)
+    else:
+        json_schema = """{"description": " """
 
     return json_schema
 
@@ -225,6 +227,8 @@ def json_schema_cls_crop(model: str):
                       """Please ensure that your response adheres to this format and provides clear and detailed reasoning for each class identified in the image."""
         expected_keys = ["description", "classes"]
         json_schema = (json_schema, expected_keys)
+    else:
+        json_schema = """{"description": " """
 
     return json_schema
 

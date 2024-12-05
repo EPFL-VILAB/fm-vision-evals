@@ -857,7 +857,10 @@ def json_schema_detect(prompt_no: int, obj: str, model: str):
         json_schema = (json_schema, expected_keys)
     
     else:
-        json_schema = {}
+        if prompt_no in [1, 2, 3, 4, 5]:
+            json_schema = """{"reasoning_steps": ["""
+        elif prompt_no in [6, 7]:
+            json_schema = """{"1": """
 
     return json_schema
 
@@ -976,6 +979,11 @@ def json_schema_naive(prompt_no: int, obj: str, normalization: int, model: str):
             expected_keys = ["coordinates"]
 
         json_schema = (json_schema, expected_keys)
+    else:
+        if prompt_no in [3,4]:
+            json_schema = """{"reasoning_steps": ["""
+        else:
+            json_schema = """{"coordinates": ["""
 
     return json_schema
 

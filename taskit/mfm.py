@@ -367,10 +367,11 @@ class QwenVL2(MFMWrapper):
     
     ADDR = "http://127.0.0.1:8000/"
 
-    def __init__(self, addr=None):
+    def __init__(self, addr=None, output_format='json'):
         self.addr = addr or QwenVL2.ADDR
         self.name = 'Qwen2-VL-72B-Instruct'
         self.default_settings = QWEN2_DEFAULTS
+        self.output_format = output_format
         
     def send_request(self, messages: Dict, max_tokens: int, output_format: str = 'json'):
         try:
@@ -379,10 +380,8 @@ class QwenVL2(MFMWrapper):
             return response
         except requests.exceptions.RequestException as e:
             return {"error": str(e)}
-
-    def send_message(self, message: Dict):
-        messages, json_schema = message['messages'], message['json_schema']
         
+    def restructure_message(self, messages: Dict):
         for m in messages:
             if m['role'] == 'user':
                 if isinstance(m['content'], list):
@@ -390,13 +389,24 @@ class QwenVL2(MFMWrapper):
                         if content['type'] == 'image_url':
                             if 'url' in content['image_url']:
                                 content['image_url'] = content['image_url']['url']
+
+    def send_message(self, message: Dict):
+        messages, json_schema = message['messages'], message['json_schema']
+        
+        mseesages = self.restructure_message(messages)
+        
+        if json_schema:
+            if isinstance(json_schema, str):
+                messages.append({"role": "assistant", "content": json_schema})
+            else:
+                raise ValueError("json_schema should be a string")
             
         for attempt in range(3):
             try:
                 response = self.send_request(
                     messages=messages,
                     max_tokens=4000,
-                    output_format="text"
+                    output_format=self.output_format,
                 )
 
                 print(response)

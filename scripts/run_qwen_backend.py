@@ -1,4 +1,5 @@
 import os
+import re
 import time
 import argparse
 import json
@@ -69,16 +70,29 @@ class QwenWrapper:
             return_tensors="pt",
         )
         return inputs
+    
+    def attach_assistant_message(self, outputs, messages):
+        assitant_message = next(iter([m["content"] for m in messages if m["role"] == "assistant"]), None)
+        
+        if assitant_message is not None:
+            outputs = [assitant_message + output for output in outputs]
+        
+        return outputs
 
     def forward(self, messages, max_new_tokens=256):
+        print("Preprocessing messages")
         inputs = self.preprocess_message(messages).to(self.model.device)
+        print("Generating outputs")
+        print(f"input shape: {inputs.input_ids.shape}")
         generated_ids = self.model.generate(**inputs, max_new_tokens=max_new_tokens)
         generated_ids_trimmed = [
             out_ids[len(in_ids):] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
         ]
+        print("Postprocessing outputs")
         output_text = self.processor.batch_decode(
             generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
         )
+        output_text = self.attach_assistant_message(output_text, messages)
         return output_text
 
 assert args.num_gpus * 2 % args.num_replicas == 0, "Double the number of GPUs must be divisible by number of replicas"
@@ -99,7 +113,9 @@ class QwenDeployment:
             max_new_tokens = data.get("max_new_tokens", 256)
             outputs = self.model.forward(data["messages"], max_new_tokens)
             if data["output_format"] == "json":
-                return {"output": [json.loads(o) for o in outputs]}
+                return {"output": [json.loads(
+                                        re.sub(r"[\n\t]+", "", o)
+                                    ) for o in outputs]}
             else:
                 return {"output": outputs}
         elif "status" in data:

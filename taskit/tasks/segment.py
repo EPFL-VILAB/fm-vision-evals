@@ -513,6 +513,8 @@ def json_schema_segment(shape: str, batch_size: int, model: str):
 
         expected_keys = [str(k+1) for k in range(1)]
         json_schema = (json_schema, expected_keys)
+    else:
+        json_schema = """{"reasoning_steps": ["""
 
     return json_schema
 
@@ -583,6 +585,8 @@ def json_schema_naive(batch_size: int, model: str):
 
         expected_keys = ["reasoning_steps"] + [str(k) for k in range(batch_size)]
         json_schema = (json_schema, expected_keys)
+    else:
+        json_schema = """{"reasoning_steps": ["""
 
     return json_schema
 

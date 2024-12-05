@@ -234,6 +234,9 @@ def json_schema_grouping(prompt_no: int, model: str, n_batch_segments: int):
             )
             expected_keys = ["reasoning_steps"] + [str(k+1) for k in range(1)]
         json_schema = (json_schema, expected_keys)
+    
+    else:
+        json_schema = """{"reasoning_steps": ["""
 
     return json_schema
 
