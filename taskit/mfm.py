@@ -7,7 +7,6 @@ import anthropic
 import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 from openai import OpenAI
-from PIL import Image
 from together import Together
 
 from taskit.utils.data import decode_image
@@ -126,7 +125,6 @@ class GPT4o(MFMWrapper):
                 )
                 compl_tokens, prompt_tokens = response.usage.completion_tokens, response.usage.prompt_tokens
                 resp_dict = json.loads(response.choices[0].message.content)
-
                 return resp_dict, (compl_tokens, prompt_tokens), False
             except Exception as e:
                 print(f"Error in sending message: {e}")
@@ -291,7 +289,7 @@ class Llama_Together(MFMWrapper):
         self.name = 'llama-3.2-90b'
         self.seed = 42
         self.default_settings = LLAMA_DEFAULTS
-        
+
     def _image_token_cost(self, img_str: str):
         img = decode_image(img_str)
         return min(2, max(img.height // 560, 1)) * min(2, max(img.width // 560, 1)) * 1601
@@ -302,7 +300,7 @@ class Llama_Together(MFMWrapper):
 
         messages.append({"role": "user", "content": json_schema})
         messages.append({"role": "user", "content": "Output only the json, and nothing else."})
-        
+
         # Find the token cost for images
         img_token_costs = 0
         for message in all_messages['messages'][1:]:

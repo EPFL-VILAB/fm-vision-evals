@@ -68,31 +68,8 @@ def system_prompts_cls_mult(class_list: list) -> str:
 
 
 def system_prompt_cls_crop(class_list: list):
-    system_prompt = """You are a highly advanced AI classifier responsible for accurately identifying and classifying elements within an image. You will be provided with a cropped section of an image and the full image from which this crop was taken. Your task is to analyze the cropped image meticulously, considering every detail and potential context.\n\n""" +\
-                    """**Step-by-Step Instructions:**\n\n""" +\
-                    """1. Detailed Reasoning:\n""" +\
-                    """• Reason About the Crop: Begin by thoroughly reasoning through the cropped image, focusing on every visible detail. Consider aspects such as the objects, textures, shapes, colors, and any relevant features. Pay special attention to any subtle elements that might influence the classification.\n""" +\
-                    """• Contextualize: Compare the crop with the full image to understand the broader context. Identify how the crop fits within the larger scene, which may reveal important clues about the classes present in the crop.\n""" +\
-                    """2. Class Identification:\n""" +\
-                    """• Identify All Relevant Classes: Based on your detailed reasoning, determine all the classes present in the cropped image. Consider both the objects and the background, as the background itself may represent a specific class.\n""" +\
-                    """• Check for Overlapping Classes: If there are multiple possible classes that could describe an object or background, consider the likelihood of each. In cases of ambiguity, include all plausible classes to maximize recall.\n""" +\
-                    """• Accuracy Assurance: Double-check your selections by re-examining the crop and its context within the full image. Ensure that every class you identify is justifiable based on the visual evidence.\n""" +\
-                    """3. Output Format:\n""" +\
-                    """• JSON Structure: Provide your findings in the following JSON format:\n""" +\
-                    """{\n""" + \
-                    """  "reasoning_steps": [\n""" + \
-                    """    "Step 1: Examined the crop to identify all visible elements and features.",\n""" + \
-                    """    "Step 2: Compared the crop with the full image to understand the context.",\n""" + \
-                    """    ...\n""" + \
-                    """  ],\n""" + \
-                    """  "classes": ["class_1", "class_2", ...]\n""" + \
-                    """}\n\n""" + \
-                    """• Explanation: In the “reasoning_steps” field, include your detailed analysis, explaining your reasoning and how the context of the full image informed your classification decisions.\n\n""" +\
-                    """**Additional Guidelines:**\n\n""" +\
-                    """• Comprehensive Consideration: Include all classes that could reasonably be present, even if they seem secondary. It's better to be thorough and inclusive.\n""" +\
-                    f"""• Class List: The classes you must select from are: {class_list}. Ensure every class you identify is part of this predefined list.\n""" +\
-                    """• Final Verification: After determining the classes, review your work (in the reasoning steps) to ensure that no plausible class is overlooked and that each identified class is supported by clear visual evidence.\n\n""" +\
-                    """Your goal is to achieve the highest possible accuracy and recall by carefully considering every detail and context.”"""
+    system_prompt = """You are an AI assistant tasked with identifying classes. You will be provided with a crop from an image and the full image the crop was taken from. You must first describe the cropped image in """ +\
+                    f"""detail, and then identify the classes present in the crop. Note that the background might itself be a class. The classes you must pick from belong to: {class_list}. Output the detailed description (under key "description") and classes (under key "classes") in a JSON. For example, {{"description", "detailed description of crop", "classes": [list of classes]}}  """
 
     return system_prompt
 
