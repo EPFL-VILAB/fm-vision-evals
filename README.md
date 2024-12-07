@@ -54,6 +54,7 @@ cd fm-vision-evals
 conda create -n fm-vision python=3.10 -y
 conda activate fm-vision
 pip install -r requirements.txt
+pip install flash-attn --no-build-isolation
 ```
 
 ### Getting started
@@ -63,7 +64,7 @@ We provide a simple example to generate examples for all tasks using a chosen MF
 ```python
 from taskit.demo import DemoSampler
 
-sampler = DemoSampler(model_name="gpt-4o-2024-08-06", api_key="<your-api-key>")  # Choose from one of gpt-4o-2024-08-06, gemini-1.5-pro, claude-3-5-sonnet-20240620
+sampler = DemoSampler(model_name="gpt-4o-2024-08-06", api_key="<your-api-key>")  # Choose from one of gpt-4o-2024-08-06, gemini-1.5-pro, claude-3-5-sonnet-20240620, qwen2-vl-72b-instruct
 img_path = './assets/demo_input.jpg'
 preds, tokens = sampler(img_path)  # Will roughly take 10 minutes
 pred_img = sampler.visualize(preds)
@@ -77,6 +78,7 @@ You should expect to see an output like the following:
 
 - For a walkthrough of using the API, please refer to the [API documentation](./notebooks/demo.ipynb).
 - We provide the documentation for the `taskit` package in [taskit documentation](README_TASKIT.md).
+- For running the sampler on `Qwen2-VL` please refer to the [this documentation](README_QWEN.md).
 
 ## License
 
