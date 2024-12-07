@@ -363,7 +363,6 @@ def process_point(
             break
 
         img_list = prepare_images_for_prompt(img, segments, current_mask, batch_segments, segment_idx, shape)
-
         if prompt is None:
             full_prompt = full_prompt_grouping(
                 prompt_no, model.name, len(batch_segments), reasoning_so_far
@@ -486,7 +485,7 @@ def group(
     Args:
         model: The MFM model to use.
         file_name: Path(s) to the image file(s) to process. Can also be a list of PIL Image objects, in which case images are saved to a temporary directory.
-        point_list: Points around which to group pixels.
+        point_list: Points around which to group pixels (In PIL coordinate system).
         prompt: Prompt for the task. Defaults to None.
         prompt_no: Prompt number. Defaults to -1.
         n_segments: Number of segments for SLIC. Defaults to 400.
