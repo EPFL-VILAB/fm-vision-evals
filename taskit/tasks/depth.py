@@ -296,6 +296,14 @@ def json_schema_depth(prompt_no: int, model: str):
             expected_keys = ["depth_order"]
 
         json_schema = (json_schema, expected_keys)
+    
+    else:
+        if prompt_no in [1, 2]:
+            json_schema = """{"reasoning_steps": ["""
+        elif prompt_no in [3]:
+            json_schema = """{"near": """
+        elif prompt_no in [4, 5]:
+            json_schema = """{"depth_order": ["""
 
     return json_schema
 

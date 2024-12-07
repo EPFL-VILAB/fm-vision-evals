@@ -266,6 +266,12 @@ def json_schema_normals(prompt_no: int, model: str):
 
         json_schema = (json_schema, expected_keys)
 
+    else:
+        if prompt_no in [1, 2]:
+            json_schema = """{"right": """
+        elif prompt_no in [3, 4, 5]:
+            json_schema = """{"reasoning_steps": ["""
+            
     return json_schema
 
 
