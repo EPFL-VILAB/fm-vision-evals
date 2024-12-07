@@ -156,13 +156,13 @@ QWEN2_DEFAULTS = {
     },
     'detect': {
         'prompt_no': 6,
-        'n_iters': 6
+        'n_iters': 8
     },
     'detect_naive': {
         'prompt_no': 5,
     },
     'segment': {
-        'prompt_no': 1,
+        'prompt_no': 2,
         'shape': 'rectangle'
     },
     'group': {
@@ -174,7 +174,7 @@ QWEN2_DEFAULTS = {
         'shape': 'curve'
     },
     'normals': {
-        'prompt_no': 4,
+        'prompt_no': 2,
         'shape': 'rectangle'
     }
 }
