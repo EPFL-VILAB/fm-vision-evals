@@ -10,8 +10,9 @@ from openai import OpenAI
 from together import Together
 
 from taskit.utils.data import decode_image
-from taskit.utils.data_constants import O4_DEFAULTS, GEMINI_DEFAULTS, CLAUDE_DEFAULTS, LLAMA_DEFAULTS, QWEN2_DEFAULTS
+import taskit.mfm_configs as configs
 
+import re
 import requests
 
 
@@ -107,11 +108,11 @@ class MFMWrapper(metaclass=TaskRegistryABCMeta):
 
 class GPT4o(MFMWrapper):
 
-    def __init__(self, api_key):
+    def __init__(self, api_key, default_settings=configs.O4_DEFAULTS):
         self.client = OpenAI(api_key=api_key)
         self.name = 'gpt-4o-2024-08-06'
         self.seed = 42
-        self.default_settings = O4_DEFAULTS
+        self.default_settings = default_settings
 
     def send_message(self, message: Dict):
         messages, json_schema = message['messages'], message['json_schema']
@@ -147,10 +148,10 @@ class GPT4o(MFMWrapper):
 class GeminiPro(MFMWrapper):
 
     def __init__(self, api_key):
-        genai.configure(api_key=api_key)
+        genai.configure(api_key=api_key, default_settings=configs.GEMINI_DEFAULTS)
         self.client = genai
         self.name = 'gemini-1.5-pro'
-        self.default_settings = GEMINI_DEFAULTS
+        self.default_settings = default_settings
 
     def parse_message(self, all_messages: Dict):
         system_prompt = all_messages['messages'][0]['content']
@@ -215,10 +216,10 @@ class GeminiPro(MFMWrapper):
 
 class ClaudeSonnet(MFMWrapper):
 
-    def __init__(self, api_key):
+    def __init__(self, api_key, default_settings=configs.CLAUDE_DEFAULTS):
         self.client = anthropic.Anthropic(api_key=api_key)
         self.name = 'claude-3-5-sonnet-20240620'
-        self.default_settings = CLAUDE_DEFAULTS
+        self.default_settings = default_settings
 
     def parse_message(self, all_messages: Dict):
         system_prompt = all_messages['messages'][0]['content']
@@ -286,11 +287,11 @@ class ClaudeSonnet(MFMWrapper):
 
 class Llama_Together(MFMWrapper):
 
-    def __init__(self, api_key):
+    def __init__(self, api_key, default_settings=configs.LLAMA_DEFAULTS):
         self.client = Together(api_key=api_key)
         self.name = 'llama-3.2-90b'
         self.seed = 42
-        self.default_settings = LLAMA_DEFAULTS
+        self.default_settings = default_settings
 
     def _image_token_cost(self, img_str: str):
         img = decode_image(img_str)
@@ -362,13 +363,11 @@ class Llama_Together(MFMWrapper):
 
 
 class QwenVL2(MFMWrapper):
-    
-    ADDR = "http://127.0.0.1:8000/"
 
-    def __init__(self, addr=None, output_format='json'):
-        self.addr = addr or QwenVL2.ADDR
+    def __init__(self, address=None, default_settings=configs.QWEN2_DEFAULTS, output_format='json'):
         self.name = 'Qwen2-VL-72B-Instruct'
-        self.default_settings = QWEN2_DEFAULTS
+        self.default_settings = default_settings
+        self.addr = address or default_settings.get('address', None)
         self.output_format = output_format
         
     def send_request(self, messages: Dict, max_tokens: int, output_format: str = 'json'):
@@ -399,26 +398,28 @@ class QwenVL2(MFMWrapper):
             else:
                 raise ValueError("json_schema should be a string")
             
-        for attempt in range(3):
-            try:
-                response = self.send_request(
-                    messages=messages,
-                    max_tokens=4000,
-                    output_format=self.output_format,
-                )
+        try:
+            response = self.send_request(
+                messages=messages,
+                max_tokens=4000,
+                output_format=self.output_format,
+            )
 
-                print(response)
-                response = response["output"]
-                if isinstance(response, list) and len(response) == 1:
-                    response = response[0]
-                
-                resp_dict = response
+            response = response["output"]
+            
+            if self.output_format == 'text':
+                response = [json.loads(re.sub(r"[\n\t]+", "", o)) for o in response]
+            
+            if isinstance(response, list) and len(response) == 1:
+                response = response[0]
+            
+            resp_dict = response
 
-                return resp_dict, (0, 0), False
-            except Exception as e:
-                print(f"Error in sending message: {e}")
-                if attempt == 2:
-                    return None, (0, 0), True
+            return resp_dict, (0, 0), False
+        
+        except Exception as e:
+            print(f"Error in sending message: {e}")
+            return None, (0, 0), True
 
     def predict(self, task, file_name, **kwargs):
         if task in self.default_settings:
@@ -431,7 +432,7 @@ class QwenVL2(MFMWrapper):
 # ==Functions==================================================================
 
 
-def get_mfm_wrapper(model_name: str, api_key: str) -> MFMWrapper:
+def get_mfm_wrapper(model_name: str, api_key: str, address: str = None) -> MFMWrapper:
     if model_name == 'gpt-4o-2024-08-06':
         return GPT4o(api_key=api_key)
     elif model_name.lower() == 'gemini-1.5-pro':
@@ -440,5 +441,7 @@ def get_mfm_wrapper(model_name: str, api_key: str) -> MFMWrapper:
         return ClaudeSonnet(api_key=api_key)
     elif model_name.lower() == 'llama-3.2-90b':
         return Llama_Together(api_key=api_key)
+    elif model_name.lower() == 'qwen2-vl-72b-instruct':
+        return QwenVL2(address=address)
     else:
         raise ValueError(f"Unsupported model name '{model_name}'")
