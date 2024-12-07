@@ -1111,9 +1111,10 @@ def zoom(
 
     resp_dict, tokens, err = model.send_message(full_prompt)
 
-    for i in range(9):
-        if resp_dict[str(i+1)] == 'yes':
-            np_img[i // cols, i % cols] = 1
+    if resp_dict:
+        for i in range(9):
+            if resp_dict[str(i+1)] == 'yes':
+                np_img[i // cols, i % cols] = 1
 
     if np.sum(np_img) == 0:
         np_img = np.ones((rows, cols))

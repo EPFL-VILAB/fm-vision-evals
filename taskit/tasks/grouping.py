@@ -25,7 +25,7 @@ def system_prompts_grouping(prompt_no: int):
                         """Provide your answer in JSON format, where the key is the region index and the value is either "yes" or "no":\n""" +\
                         """"yes" if the region is part of the same object or background category as the initial region.\n""" +\
                         """"no" if it is not.\n""" +\
-                        """Also, include a brief explanation of your reasoning. Example: {"reasoning_steps": [the reasoning steps leading to the final conclusion], "1": "yes", "2": "no", "3": "yes", "4": "no"} (if there are 4 blue regions)\n""" +\
+                        """Also, include a brief explanation of your reasoning. Example: {"reasoning_steps": ["the reasoning steps leading to the final conclusion"], "1": "yes", "2": "no", "3": "yes", "4": "no"} (if there are 4 blue regions)\n""" +\
                         """Important guidelines:\n""" +\
                         """1. Always identify the broader context: If a region shows a part of an object (e.g., an animal's fur, a car's wheel), you MUST identify it as the whole object (e.g., the animal, the car), not just that specific part.""" +\
                         """2. Multiple instances: If regions belong to different instances of the same type of object (e.g., two different chairs), mark them as "no" even if they're the same type of object."""
@@ -43,7 +43,7 @@ def system_prompts_grouping(prompt_no: int):
                         """As you determine whether each blue-marked region belongs to the same object or background, document your thought process step by step. Specifically, explain whether the region is part of a larger entity and how the apostrophe-s test influences your decision. Provide your answer in JSON format, where the key is the region index and the value is either "yes" or "no":\n""" +\
                         """- "yes" if the region is part of the same object or background category as the red-marked region.\n""" +\
                         """- "no" if it is not.\n\n""" +\
-                        """Also, include a brief explanation of your reasoning. Example: {"reasoning_steps": [the reasoning steps leading to the final conclusion, including how the apostrophe-s test was used], "1": "yes", "2": "no", "3": "yes", "4": "no"} (if there are 4 blue regions).\n"""
+                        """Also, include a brief explanation of your reasoning. Example: {"reasoning_steps": ["the reasoning steps leading to the final conclusion, including how the apostrophe-s test was used"], "1": "yes", "2": "no", "3": "yes", "4": "no"} (if there are 4 blue regions).\n"""
 
     return system_prompt
 
@@ -58,7 +58,7 @@ def system_prompts_grouping_sans_context(prompt_no: int):
                         """Provide your answer in JSON format, where the key is "1" and the value is either "yes" or "no":\n""" +\
                         """"yes" if the region is part of the same object or background category as the initial region.\n""" +\
                         """"no" if it is not.\n""" +\
-                        """Also, include a brief explanation of your reasoning. Example: {"reasoning_steps": [the reasoning steps leading to the final conclusion], "1": "yes"}\n""" +\
+                        """Also, include a brief explanation of your reasoning. Example: {"reasoning_steps": ["the reasoning steps leading to the final conclusion"], "1": "yes"}\n""" +\
                         """Important guidelines:\n""" +\
                         """1. Always identify the broader context: If a region shows a part of an object (e.g., an animal's fur, a car's wheel), you MUST identify it as the whole object (e.g., the animal, the car), not just that specific part.""" +\
                         """2. Multiple instances: If regions belong to different instances of the same type of object (e.g., two different chairs), mark them as "no" even if they're the same type of object."""
@@ -76,7 +76,7 @@ def system_prompts_grouping_sans_context(prompt_no: int):
                         """As you determine whether the blue-marked region belongs to the same object or background, document your thought process step by step. Specifically, explain whether the region is part of a larger entity and how the apostrophe-s test influences your decision. Provide your answer in JSON format, where the key is "1" and the value is either "yes" or "no":\n""" +\
                         """- "yes" if the region is part of the same object or background category as the red-marked region.\n""" +\
                         """- "no" if it is not.\n\n""" +\
-                        """Also, include a brief explanation of your reasoning. Example: {"reasoning_steps": [the reasoning steps leading to the final conclusion, including how the apostrophe-s test was used], "1": "yes"}\n"""
+                        """Also, include a brief explanation of your reasoning. Example: {"reasoning_steps": ["the reasoning steps leading to the final conclusion, including how the apostrophe-s test was used"], "1": "yes"}\n"""
 
     return system_prompt
 # --JSON Schema----------------------------------------------------------------

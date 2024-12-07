@@ -160,7 +160,7 @@ def json_schema_cls_mult(model: str):
         expected_keys = ["description", "classes"]
         json_schema = (json_schema, expected_keys)
     else:
-        json_schema = """{"description": " """
+        json_schema = """{"description":"""
 
     return json_schema
 
@@ -205,7 +205,7 @@ def json_schema_cls_crop(model: str):
         expected_keys = ["description", "classes"]
         json_schema = (json_schema, expected_keys)
     else:
-        json_schema = """{"description": " """
+        json_schema = """{"description":"""
 
     return json_schema
 
