@@ -150,7 +150,7 @@ LLAMA_DEFAULTS = {
 }
 
 QWEN2_DEFAULTS = {
-    "address": "http://127.0.0.1:8000/",
+    "address": "http://localhost:8000/",
     'classify': {
         'prompt_no': 3,
     },

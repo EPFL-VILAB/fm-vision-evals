@@ -359,10 +359,10 @@ class Llama_Together(MFMWrapper):
         return super().predict(task, file_name, **kwargs)
     
 
-# --Qwen-VL2-------------------------------------------------------------
+# --Qwen2-VL-------------------------------------------------------------
 
 
-class QwenVL2(MFMWrapper):
+class Qwen2VL(MFMWrapper):
 
     def __init__(self, address=None, default_settings=configs.QWEN2_DEFAULTS, output_format='json'):
         self.name = 'Qwen2-VL-72B-Instruct'
@@ -442,6 +442,6 @@ def get_mfm_wrapper(model_name: str, api_key: str, address: str = None) -> MFMWr
     elif model_name.lower() == 'llama-3.2-90b':
         return Llama_Together(api_key=api_key)
     elif model_name.lower() == 'qwen2-vl-72b-instruct':
-        return QwenVL2(address=address)
+        return Qwen2VL(address=address)
     else:
         raise ValueError(f"Unsupported model name '{model_name}'")
