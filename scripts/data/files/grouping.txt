@@ -1,0 +1,2 @@
+assets/script-images/input/grouping_1.jpg
+assets/script-images/input/grouping_2.jpg

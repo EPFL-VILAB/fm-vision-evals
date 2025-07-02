@@ -1,0 +1,2 @@
+assets/script-images/input/segment_1.jpg
+assets/script-images/input/segment_2.jpg

@@ -1,0 +1,2 @@
+assets/script-images/input/room_1.png
+assets/script-images/input/room_2.png

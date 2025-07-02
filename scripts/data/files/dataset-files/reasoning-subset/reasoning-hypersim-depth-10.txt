@@ -1,0 +1,10 @@
+hypersim/val/rgb/ai_048_001-cam_00/point_79_view_0_domain_rgb.png
+hypersim/val/rgb/ai_004_006-cam_01/point_83_view_0_domain_rgb.png
+hypersim/val/rgb/ai_019_001-cam_00/point_13_view_0_domain_rgb.png
+hypersim/val/rgb/ai_053_017-cam_00/point_99_view_0_domain_rgb.png
+hypersim/val/rgb/ai_045_005-cam_03/point_6_view_0_domain_rgb.png
+hypersim/val/rgb/ai_044_002-cam_01/point_82_view_0_domain_rgb.png
+hypersim/val/rgb/ai_007_005-cam_00/point_59_view_0_domain_rgb.png
+hypersim/val/rgb/ai_035_002-cam_00/point_49_view_0_domain_rgb.png
+hypersim/val/rgb/ai_038_006-cam_00/point_31_view_0_domain_rgb.png
+hypersim/val/rgb/ai_024_012-cam_00/point_21_view_0_domain_rgb.png

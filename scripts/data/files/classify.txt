@@ -1,0 +1,2 @@
+assets/script-images/input/classify_1.jpg
+assets/script-images/input/classify_2.jpg
