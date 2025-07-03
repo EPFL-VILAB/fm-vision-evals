@@ -2,7 +2,7 @@
 
 *A prompt-chaining framework to benchmark the capabilities of multimodal foundation models on several standard computer vision tasks.*
 
-[`Website`](https://4m.epfl.ch) | [`BibTeX`](#citation) 
+[`Website`](https://fm-vision-evals.epfl.ch/) | [`BibTeX`](#citation) 
 
 Official implementation for :
 
@@ -101,10 +101,13 @@ Licensed under the Apache License, Version 2.0. See [LICENSE](/LICENSE) for deta
 
 If you find this repository and the package helpful, please consider citing our work:
 ```
-@article{mfm_vision2025,
-    title={How Well Does GPT-4o Understand Vision? Evaluating Multimodal Foundation Models on Standard Computer Vision Tasks},
-    author={Rahul Ramachandran and Ali Garjani and Roman Bachmann and Andrei Atanov and O{\u{g}}uzhan Fatih Kar and Amir Zamir},
-    journal={arXiv 2025},
-    year={2025},
+@misc{ramachandran2025doesgpt4ounderstandvision,
+      title={How Well Does GPT-4o Understand Vision? Evaluating Multimodal Foundation Models on Standard Computer Vision Tasks}, 
+      author={Rahul Ramachandran and Ali Garjani and Roman Bachmann and Andrei Atanov and Oğuzhan Fatih Kar and Amir Zamir},
+      year={2025},
+      eprint={2507.01955},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2507.01955}, 
 }
 ```
