@@ -6,7 +6,7 @@
 
 Official implementation for :
 
-[**How Well Does GPT-4o Understand Vision? Evaluating Multimodal Foundation Models on Standard Computer Vision Tasks**](https://fm-vision-evals.epfl.ch/) <br>
+[**How Well Does GPT-4o Understand Vision? Evaluating Multimodal Foundation Models on Standard Computer Vision Tasks**](https://fm-vision-evals.epfl.ch/), ICLR 2026 <br>
 *[Rahul Ramachandran](https://rahuboy.github.io/), [Ali Garjani](https://garjania.github.io/), [Roman Bachmann](https://roman-bachmann.github.io/), [Andrei Atanov](https://andrewatanov.github.io/)\*, [Oğuzhan Fatih Kar](https://ofkar.github.io/)\*, [Amir Zamir](https://vilab.epfl.ch/zamir/)\**
 
 <br>
